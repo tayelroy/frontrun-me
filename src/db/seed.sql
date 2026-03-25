@@ -152,6 +152,25 @@ on conflict (telegram_invite_id) do update
 set granted_at = excluded.granted_at,
     expires_at = excluded.expires_at;
 
+insert into telegram_bot_access (id, user_id, access_code, telegram_user_id, telegram_handle, claimed_at, revoked_at)
+values
+  (
+    '7f7f7f7f-7777-7777-7777-777777777771',
+    '11111111-1111-1111-1111-111111111111',
+    'FRM-SEED-7A1C',
+    '9021001',
+    '@signalalpha',
+    now() - interval '8 minutes',
+    null
+  )
+on conflict (user_id) do update
+set access_code = excluded.access_code,
+    telegram_user_id = excluded.telegram_user_id,
+    telegram_handle = excluded.telegram_handle,
+    claimed_at = excluded.claimed_at,
+    revoked_at = excluded.revoked_at,
+    updated_at = now();
+
 insert into delivery_events (id, news_insight_id, destination, status, sent_at)
 values
   (

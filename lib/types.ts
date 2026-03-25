@@ -31,9 +31,16 @@ export interface AccessSnapshot {
   paymentStatus: string | null;
   inviteLink: string | null;
   channelId: string | null;
+  accessCode: string | null;
+  linkedTelegramUserId: string | null;
+  accessCodeClaimedAt: string | null;
   revokedAt: string | null;
   grantedAt: string | null;
   expiresAt: string | null;
+}
+
+export interface AccessStatusResponse {
+  hasAccess: boolean;
 }
 
 export interface TelegramAggregationOverview {

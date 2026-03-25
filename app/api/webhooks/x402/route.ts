@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { env } from '@/lib/env';
 import { recordPaymentAndIssueAccess } from '@/lib/access';
 import { x402Schema } from '@/lib/x402';
 
@@ -17,25 +16,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, errors: parsed.error.flatten() }, { status: 400 });
   }
 
-  const telegramChannelId = parsed.data.telegramChannelId ?? env.TELEGRAM_CHANNEL_ID;
-  if (!telegramChannelId) {
-    return NextResponse.json(
-      { ok: false, message: 'telegramChannelId is required in the request or as TELEGRAM_CHANNEL_ID.' },
-      { status: 400 }
-    );
-  }
-
-  const record = await recordPaymentAndIssueAccess({
-    ...parsed.data,
-    telegramChannelId
-  });
+  const record = await recordPaymentAndIssueAccess(parsed.data);
 
   return NextResponse.json(
     {
       ok: true,
       userId: record.user.id,
-      inviteLink: record.telegramInvite.invite_link,
-      paymentReference: record.paymentSession.reference
+      inviteLink: null,
+      paymentReference: record.paymentSession.reference,
+      accessCode: record.botAccess.access_code
     },
     { status: 201 }
   );
