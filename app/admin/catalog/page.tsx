@@ -10,12 +10,12 @@ export default async function CatalogPage() {
     <AdminFrame
       active="catalog"
       title="Catalog and source readiness"
-      subtitle="Track source coverage, article intake, and insight output from the database."
+      subtitle="Track feed coverage, Telegram intake readiness, article volume, and insight output from the database."
     >
       <section className="hero compact">
         <div className="hero-copy">
-          <h2>News ingestion is ready for signal processing</h2>
-          <p>Use this surface to manage sources, review dedupe quality, and publish premium insights.</p>
+          <h2>News and Telegram ingestion are ready for signal processing</h2>
+          <p>Use this surface to manage sources, review dedupe quality, and promote high-confidence signals into premium insights.</p>
           <div className="stat-strip">
             <div className="mini-stat">
               <strong>{stats.sources}</strong>
@@ -80,11 +80,11 @@ export default async function CatalogPage() {
           <div className="insight-list">
             <div className="insight">
               <strong>Step 1</strong>
-              <div>Fetch a story and compute a stable dedupe key.</div>
+              <div>Fetch a feed item or Telegram post and compute a stable dedupe key.</div>
             </div>
             <div className="insight">
               <strong>Step 2</strong>
-              <div>Insert the article, then generate the AI insight record.</div>
+              <div>Insert the raw record, cluster duplicates, then generate the AI insight record.</div>
             </div>
             <div className="insight">
               <strong>Step 3</strong>

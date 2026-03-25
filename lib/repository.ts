@@ -1,7 +1,16 @@
 import 'server-only';
 import type { PoolClient } from 'pg';
 import { query } from './db';
-import type { AccessSnapshot, PreviewInsight, SignalBias, SignalCategory } from './types';
+import type {
+  AccessSnapshot,
+  PreviewInsight,
+  SignalBias,
+  SignalCategory,
+  TelegramAggregationOverview,
+  TelegramClusterPreview,
+  TelegramSourceConfig,
+  TelegramSourceStatus
+} from './types';
 
 type Db = Pick<PoolClient, 'query'>;
 
@@ -117,6 +126,175 @@ export async function getDashboardStats() {
   }
 }
 
+export async function getTelegramAggregationOverview(): Promise<TelegramAggregationOverview> {
+  try {
+    const result = await query<{
+      sources: string;
+      active_sources: string;
+      raw_messages: string;
+      candidate_messages: string;
+      clusters: string;
+      promoted_clusters: string;
+      completed_runs: string;
+      failed_runs: string;
+    }>(
+      `
+        select
+          (select count(*) from telegram_sources) as sources,
+          (select count(*) from telegram_sources where is_active = true) as active_sources,
+          (select count(*) from telegram_messages) as raw_messages,
+          (select count(*) from telegram_messages where is_candidate = true) as candidate_messages,
+          (select count(*) from telegram_signal_clusters) as clusters,
+          (select count(*) from telegram_signal_clusters where status in ('promoted', 'published')) as promoted_clusters,
+          (select count(*) from telegram_ingestion_runs where status = 'completed') as completed_runs,
+          (select count(*) from telegram_ingestion_runs where status = 'failed') as failed_runs
+      `
+    );
+
+    return {
+      sources: Number(result.rows[0]?.sources ?? 0),
+      activeSources: Number(result.rows[0]?.active_sources ?? 0),
+      rawMessages: Number(result.rows[0]?.raw_messages ?? 0),
+      candidateMessages: Number(result.rows[0]?.candidate_messages ?? 0),
+      clusters: Number(result.rows[0]?.clusters ?? 0),
+      promotedClusters: Number(result.rows[0]?.promoted_clusters ?? 0),
+      completedRuns: Number(result.rows[0]?.completed_runs ?? 0),
+      failedRuns: Number(result.rows[0]?.failed_runs ?? 0)
+    };
+  } catch {
+    return {
+      sources: 0,
+      activeSources: 0,
+      rawMessages: 0,
+      candidateMessages: 0,
+      clusters: 0,
+      promotedClusters: 0,
+      completedRuns: 0,
+      failedRuns: 0
+    };
+  }
+}
+
+export async function listTelegramSourceStatuses(limit = 8): Promise<TelegramSourceStatus[]> {
+  try {
+    const result = await query<TelegramSourceStatus & { fetchedCount: string; insertedCount: string; dedupedCount: string }>(
+      `
+        select
+          ts.id,
+          ts.source_name as "sourceName",
+          ts.telegram_channel_id as "telegramChannelId",
+          ts.telegram_username as "telegramUsername",
+          ts.access_mode as "accessMode",
+          ts.tier,
+          ts.priority,
+          coalesce(ts.category, 'watchlist') as category,
+          ts.is_active as "isActive",
+          ts.last_processed_message_id::text as "lastProcessedMessageId",
+          ts.last_seen_at::text as "lastSeenAt",
+          tir.status as "lastRunStatus",
+          tir.completed_at::text as "lastRunCompletedAt",
+          coalesce(tir.fetched_count, 0)::text as "fetchedCount",
+          coalesce(tir.inserted_count, 0)::text as "insertedCount",
+          coalesce(tir.deduped_count, 0)::text as "dedupedCount"
+        from telegram_sources ts
+        left join lateral (
+          select status, completed_at, fetched_count, inserted_count, deduped_count
+          from telegram_ingestion_runs tir
+          where tir.source_id = ts.id
+          order by tir.started_at desc
+          limit 1
+        ) tir on true
+        order by ts.priority desc, ts.source_name asc
+        limit $1
+      `,
+      [limit]
+    );
+
+    return result.rows.map((row) => ({
+      ...row,
+      fetchedCount: Number(row.fetchedCount),
+      insertedCount: Number(row.insertedCount),
+      dedupedCount: Number(row.dedupedCount)
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export async function listActiveTelegramSources(limit = 25): Promise<TelegramSourceConfig[]> {
+  try {
+    const result = await query<TelegramSourceConfig>(
+      `
+        select
+          id,
+          source_name as "sourceName",
+          telegram_channel_id as "telegramChannelId",
+          telegram_username as "telegramUsername",
+          access_mode as "accessMode",
+          tier,
+          priority,
+          coalesce(category, 'watchlist') as category,
+          last_processed_message_id::text as "lastProcessedMessageId",
+          last_seen_at::text as "lastSeenAt"
+        from telegram_sources
+        where is_active = true
+        order by priority desc, source_name asc
+        limit $1
+      `,
+      [limit]
+    );
+
+    return result.rows;
+  } catch {
+    return [];
+  }
+}
+
+export async function listTelegramClusters(limit = 6): Promise<TelegramClusterPreview[]> {
+  try {
+    const result = await query<{
+      id: string;
+      sourceName: string;
+      category: SignalCategory;
+      bias: SignalBias;
+      signalScore: string;
+      corroborationCount: string;
+      status: TelegramClusterPreview['status'];
+      summary: string | null;
+      whyItMatters: string | null;
+      postedAt: string;
+    }>(
+      `
+        select
+          tsc.id,
+          ts.source_name as "sourceName",
+          tsc.category,
+          tsc.bias,
+          tsc.signal_score::text as "signalScore",
+          tsc.corroboration_count::text as "corroborationCount",
+          tsc.status,
+          tsc.summary,
+          tsc.why_it_matters as "whyItMatters",
+          tm.posted_at::text as "postedAt"
+        from telegram_signal_clusters tsc
+        join telegram_messages tm on tm.id = tsc.canonical_message_id
+        join telegram_sources ts on ts.id = tm.source_id
+        order by tm.posted_at desc
+        limit $1
+      `,
+      [limit]
+    );
+
+    return result.rows.map((row) => ({
+      ...row,
+      signalScore: Number(row.signalScore),
+      corroborationCount: Number(row.corroborationCount)
+    }));
+  } catch {
+    return [];
+  }
+}
+
 export async function createPaymentSession(
   db: Db,
   input: {
@@ -219,7 +397,7 @@ export async function grantAccess(
 
 export async function insertNewsSource(
   db: Db,
-  input: { name: string; kind: 'rss' | 'api' | 'manual'; feedUrl?: string | null; isActive?: boolean }
+  input: { name: string; kind: 'rss' | 'api' | 'manual' | 'telegram'; feedUrl?: string | null; isActive?: boolean }
 ) {
   const result = await db.query(
     `
@@ -233,6 +411,293 @@ export async function insertNewsSource(
       returning *
     `,
     [input.name, input.kind, input.feedUrl ?? null, input.isActive ?? true]
+  );
+
+  return result.rows[0];
+}
+
+export async function upsertTelegramSource(
+  db: Db,
+  input: {
+    sourceName: string;
+    telegramChannelId: string;
+    telegramUsername?: string | null;
+    accessMode: 'bot' | 'user_session' | 'manual';
+    tier?: 'preview' | 'premium' | 'internal';
+    priority?: number;
+    category?: SignalCategory;
+    isActive?: boolean;
+    lastProcessedMessageId?: number | null;
+    lastSeenAt?: string | null;
+  }
+) {
+  const result = await db.query(
+    `
+      insert into telegram_sources (
+        source_name,
+        telegram_channel_id,
+        telegram_username,
+        access_mode,
+        tier,
+        priority,
+        category,
+        is_active,
+        last_processed_message_id,
+        last_seen_at
+      )
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      on conflict (telegram_channel_id)
+      do update set
+        source_name = excluded.source_name,
+        telegram_username = excluded.telegram_username,
+        access_mode = excluded.access_mode,
+        tier = excluded.tier,
+        priority = excluded.priority,
+        category = excluded.category,
+        is_active = excluded.is_active,
+        last_processed_message_id = coalesce(excluded.last_processed_message_id, telegram_sources.last_processed_message_id),
+        last_seen_at = coalesce(excluded.last_seen_at, telegram_sources.last_seen_at),
+        updated_at = now()
+      returning *
+    `,
+    [
+      input.sourceName,
+      input.telegramChannelId,
+      input.telegramUsername ?? null,
+      input.accessMode,
+      input.tier ?? 'premium',
+      input.priority ?? 50,
+      input.category ?? 'watchlist',
+      input.isActive ?? true,
+      input.lastProcessedMessageId ?? null,
+      input.lastSeenAt ?? null
+    ]
+  );
+
+  return result.rows[0];
+}
+
+export async function recordTelegramIngestionRun(
+  db: Db,
+  input: {
+    sourceId: string;
+    startedAt?: string;
+    completedAt?: string | null;
+    status: 'running' | 'completed' | 'failed';
+    fetchedCount?: number;
+    insertedCount?: number;
+    dedupedCount?: number;
+    errorMessage?: string | null;
+  }
+) {
+  const result = await db.query(
+    `
+      insert into telegram_ingestion_runs (
+        source_id,
+        started_at,
+        completed_at,
+        status,
+        fetched_count,
+        inserted_count,
+        deduped_count,
+        error_message
+      )
+      values ($1, coalesce($2::timestamptz, now()), $3, $4, $5, $6, $7, $8)
+      returning *
+    `,
+    [
+      input.sourceId,
+      input.startedAt ?? null,
+      input.completedAt ?? null,
+      input.status,
+      input.fetchedCount ?? 0,
+      input.insertedCount ?? 0,
+      input.dedupedCount ?? 0,
+      input.errorMessage ?? null
+    ]
+  );
+
+  return result.rows[0];
+}
+
+export async function insertTelegramMessage(
+  db: Db,
+  input: {
+    sourceId: string;
+    telegramMessageId: number;
+    postedAt: string;
+    groupedId?: number | null;
+    senderName?: string | null;
+    messageText?: string | null;
+    normalizedText: string;
+    contentHash: string;
+    dedupeKey: string;
+    mediaKind?: string | null;
+    forwardedFrom?: string | null;
+    replyToMessageId?: number | null;
+    rawPayload?: Record<string, unknown>;
+    extractedLinks?: string[];
+    tags?: string[];
+    isCandidate?: boolean;
+  }
+) {
+  const result = await db.query(
+    `
+      insert into telegram_messages (
+        source_id,
+        telegram_message_id,
+        grouped_id,
+        posted_at,
+        sender_name,
+        message_text,
+        normalized_text,
+        content_hash,
+        dedupe_key,
+        media_kind,
+        forwarded_from,
+        reply_to_message_id,
+        raw_payload,
+        extracted_links,
+        tags,
+        is_candidate
+      )
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+      on conflict (source_id, telegram_message_id)
+      do update set
+        grouped_id = excluded.grouped_id,
+        posted_at = excluded.posted_at,
+        sender_name = excluded.sender_name,
+        message_text = excluded.message_text,
+        normalized_text = excluded.normalized_text,
+        content_hash = excluded.content_hash,
+        dedupe_key = excluded.dedupe_key,
+        media_kind = excluded.media_kind,
+        forwarded_from = excluded.forwarded_from,
+        reply_to_message_id = excluded.reply_to_message_id,
+        raw_payload = excluded.raw_payload,
+        extracted_links = excluded.extracted_links,
+        tags = excluded.tags,
+        is_candidate = excluded.is_candidate
+      returning *
+    `,
+    [
+      input.sourceId,
+      input.telegramMessageId,
+      input.groupedId ?? null,
+      input.postedAt,
+      input.senderName ?? null,
+      input.messageText ?? null,
+      input.normalizedText,
+      input.contentHash,
+      input.dedupeKey,
+      input.mediaKind ?? null,
+      input.forwardedFrom ?? null,
+      input.replyToMessageId ?? null,
+      input.rawPayload ?? {},
+      JSON.stringify(input.extractedLinks ?? []),
+      JSON.stringify(input.tags ?? []),
+      input.isCandidate ?? true
+    ]
+  );
+
+  return result.rows[0];
+}
+
+export async function upsertTelegramCluster(
+  db: Db,
+  input: {
+    canonicalMessageId: string;
+    clusterFingerprint: string;
+    category: SignalCategory;
+    bias: SignalBias;
+    signalScore: number;
+    corroborationCount?: number;
+    status?: 'queued' | 'reviewed' | 'promoted' | 'published' | 'discarded';
+    summary?: string | null;
+    whyItMatters?: string | null;
+    promotedArticleId?: string | null;
+  }
+) {
+  const result = await db.query(
+    `
+      insert into telegram_signal_clusters (
+        canonical_message_id,
+        cluster_fingerprint,
+        category,
+        bias,
+        signal_score,
+        corroboration_count,
+        status,
+        summary,
+        why_it_matters,
+        promoted_article_id
+      )
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      on conflict (cluster_fingerprint)
+      do update set
+        canonical_message_id = excluded.canonical_message_id,
+        category = excluded.category,
+        bias = excluded.bias,
+        signal_score = excluded.signal_score,
+        corroboration_count = excluded.corroboration_count,
+        status = excluded.status,
+        summary = excluded.summary,
+        why_it_matters = excluded.why_it_matters,
+        promoted_article_id = excluded.promoted_article_id,
+        updated_at = now()
+      returning *
+    `,
+    [
+      input.canonicalMessageId,
+      input.clusterFingerprint,
+      input.category,
+      input.bias,
+      input.signalScore,
+      input.corroborationCount ?? 1,
+      input.status ?? 'queued',
+      input.summary ?? null,
+      input.whyItMatters ?? null,
+      input.promotedArticleId ?? null
+    ]
+  );
+
+  return result.rows[0];
+}
+
+export async function attachTelegramMessageToCluster(
+  db: Db,
+  input: { clusterId: string; messageId: string; isCanonical?: boolean }
+) {
+  const result = await db.query(
+    `
+      insert into telegram_cluster_messages (cluster_id, message_id, is_canonical)
+      values ($1, $2, $3)
+      on conflict (cluster_id, message_id)
+      do update set
+        is_canonical = excluded.is_canonical
+      returning *
+    `,
+    [input.clusterId, input.messageId, input.isCanonical ?? false]
+  );
+
+  return result.rows[0];
+}
+
+export async function updateTelegramSourceCursor(
+  db: Db,
+  input: { sourceId: string; lastProcessedMessageId?: number | null; lastSeenAt?: string | null }
+) {
+  const result = await db.query(
+    `
+      update telegram_sources
+      set
+        last_processed_message_id = coalesce($2, last_processed_message_id),
+        last_seen_at = coalesce($3::timestamptz, last_seen_at),
+        updated_at = now()
+      where id = $1
+      returning *
+    `,
+    [input.sourceId, input.lastProcessedMessageId ?? null, input.lastSeenAt ?? null]
   );
 
   return result.rows[0];

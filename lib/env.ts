@@ -3,6 +3,11 @@ import { z } from 'zod';
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1).optional(),
   TELEGRAM_CHANNEL_ID: z.string().optional(),
+  TELEGRAM_API_ID: z.coerce.number().int().positive().optional(),
+  TELEGRAM_API_HASH: z.string().min(1).optional(),
+  TELEGRAM_SESSION: z.string().optional(),
+  TELEGRAM_PHONE_NUMBER: z.string().optional(),
+  TELEGRAM_2FA_PASSWORD: z.string().optional(),
   X402_WEBHOOK_SECRET: z.string().optional(),
   PORT: z.coerce.number().int().positive().default(3000)
 });
