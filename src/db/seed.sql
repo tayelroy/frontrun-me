@@ -162,3 +162,300 @@ values
     now() - interval '9 minutes'
   )
 on conflict (id) do nothing;
+
+insert into telegram_sources (
+  id,
+  source_name,
+  telegram_channel_id,
+  telegram_username,
+  access_mode,
+  tier,
+  priority,
+  category,
+  is_active,
+  last_processed_message_id,
+  last_seen_at
+)
+values
+  (
+    '99999999-9999-9999-9999-999999999991',
+    'Whale Wire Daily',
+    '-1003000000001',
+    'whalewiredaily',
+    'user_session',
+    'premium',
+    95,
+    'macro',
+    true,
+    18342,
+    now() - interval '6 minutes'
+  ),
+  (
+    '99999999-9999-9999-9999-999999999992',
+    'Onchain Risk Watch',
+    '-1003000000002',
+    'onchainriskwatch',
+    'bot',
+    'premium',
+    100,
+    'exploit',
+    true,
+    9281,
+    now() - interval '3 minutes'
+  ),
+  (
+    '99999999-9999-9999-9999-999999999993',
+    'Token Catalyst Radar',
+    '-1003000000003',
+    'tokencatalystradar',
+    'user_session',
+    'preview',
+    82,
+    'partnership',
+    true,
+    5512,
+    now() - interval '12 minutes'
+  )
+on conflict (telegram_channel_id) do update
+set source_name = excluded.source_name,
+    telegram_username = excluded.telegram_username,
+    access_mode = excluded.access_mode,
+    tier = excluded.tier,
+    priority = excluded.priority,
+    category = excluded.category,
+    is_active = excluded.is_active,
+    last_processed_message_id = excluded.last_processed_message_id,
+    last_seen_at = excluded.last_seen_at,
+    updated_at = now();
+
+insert into telegram_ingestion_runs (
+  id,
+  source_id,
+  started_at,
+  completed_at,
+  status,
+  fetched_count,
+  inserted_count,
+  deduped_count,
+  error_message
+)
+values
+  (
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1',
+    '99999999-9999-9999-9999-999999999991',
+    now() - interval '7 minutes',
+    now() - interval '6 minutes',
+    'completed',
+    18,
+    5,
+    13,
+    null
+  ),
+  (
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2',
+    '99999999-9999-9999-9999-999999999992',
+    now() - interval '4 minutes',
+    now() - interval '3 minutes',
+    'completed',
+    9,
+    4,
+    5,
+    null
+  ),
+  (
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3',
+    '99999999-9999-9999-9999-999999999993',
+    now() - interval '15 minutes',
+    now() - interval '12 minutes',
+    'failed',
+    11,
+    2,
+    3,
+    'Channel rate limit encountered during backfill.'
+  )
+on conflict (id) do nothing;
+
+insert into telegram_messages (
+  id,
+  source_id,
+  telegram_message_id,
+  grouped_id,
+  posted_at,
+  sender_name,
+  message_text,
+  normalized_text,
+  content_hash,
+  dedupe_key,
+  media_kind,
+  forwarded_from,
+  reply_to_message_id,
+  raw_payload,
+  extracted_links,
+  tags,
+  is_candidate
+)
+values
+  (
+    'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1',
+    '99999999-9999-9999-9999-999999999992',
+    9278,
+    null,
+    now() - interval '31 minutes',
+    'Risk Watch Bot',
+    'Urgent: bridge exploit rumor spreading after suspicious treasury outflows. https://example.com/bridge-alert',
+    'urgent bridge exploit rumor spreading after suspicious treasury outflows https://example.com/bridge-alert',
+    'hash-bridge-exploit-1',
+    'dedupe-bridge-exploit',
+    'text',
+    null,
+    null,
+    '{"seed": true}'::jsonb,
+    '["https://example.com/bridge-alert"]'::jsonb,
+    '["security","bridge","urgent"]'::jsonb,
+    true
+  ),
+  (
+    'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2',
+    '99999999-9999-9999-9999-999999999991',
+    18338,
+    null,
+    now() - interval '29 minutes',
+    'Macro Desk',
+    'ETF desks seeing renewed ETH chatter this afternoon. https://example.com/eth-etf-flow',
+    'etf desks seeing renewed eth chatter this afternoon https://example.com/eth-etf-flow',
+    'hash-eth-etf-1',
+    'dedupe-eth-etf',
+    'text',
+    null,
+    null,
+    '{"seed": true}'::jsonb,
+    '["https://example.com/eth-etf-flow"]'::jsonb,
+    '["eth","etf","macro"]'::jsonb,
+    true
+  ),
+  (
+    'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb3',
+    '99999999-9999-9999-9999-999999999993',
+    5509,
+    null,
+    now() - interval '18 minutes',
+    'Catalyst Radar',
+    'Layer-2 partnership announced with payment app distribution, details still thin.',
+    'layer-2 partnership announced with payment app distribution details still thin',
+    'hash-partnership-1',
+    'dedupe-layer2-partnership',
+    'text',
+    null,
+    null,
+    '{"seed": true}'::jsonb,
+    '[]'::jsonb,
+    '["partnership","distribution"]'::jsonb,
+    true
+  ),
+  (
+    'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb4',
+    '99999999-9999-9999-9999-999999999992',
+    9279,
+    null,
+    now() - interval '28 minutes',
+    'Risk Watch Bot',
+    'Second source now confirms abnormal bridge wallet movements. https://example.com/bridge-follow-up',
+    'second source now confirms abnormal bridge wallet movements https://example.com/bridge-follow-up',
+    'hash-bridge-exploit-2',
+    'dedupe-bridge-exploit',
+    'text',
+    null,
+    null,
+    '{"seed": true}'::jsonb,
+    '["https://example.com/bridge-follow-up"]'::jsonb,
+    '["security","corroboration"]'::jsonb,
+    true
+  )
+on conflict (source_id, telegram_message_id) do update
+set posted_at = excluded.posted_at,
+    sender_name = excluded.sender_name,
+    message_text = excluded.message_text,
+    normalized_text = excluded.normalized_text,
+    content_hash = excluded.content_hash,
+    dedupe_key = excluded.dedupe_key,
+    media_kind = excluded.media_kind,
+    forwarded_from = excluded.forwarded_from,
+    reply_to_message_id = excluded.reply_to_message_id,
+    raw_payload = excluded.raw_payload,
+    extracted_links = excluded.extracted_links,
+    tags = excluded.tags,
+    is_candidate = excluded.is_candidate;
+
+insert into telegram_signal_clusters (
+  id,
+  canonical_message_id,
+  cluster_fingerprint,
+  category,
+  bias,
+  signal_score,
+  corroboration_count,
+  status,
+  summary,
+  why_it_matters,
+  promoted_article_id
+)
+values
+  (
+    'cccccccc-cccc-cccc-cccc-ccccccccccc1',
+    'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1',
+    'cluster-bridge-exploit',
+    'exploit',
+    'urgent',
+    96,
+    2,
+    'reviewed',
+    'Bridge exploit chatter is now corroborated by multiple monitored Telegram channels.',
+    'Security headlines with treasury movement confirmation tend to create immediate risk-off reactions.',
+    '33333333-3333-3333-3333-333333333332'
+  ),
+  (
+    'cccccccc-cccc-cccc-cccc-ccccccccccc2',
+    'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2',
+    'cluster-eth-etf',
+    'macro',
+    'bullish',
+    84,
+    1,
+    'queued',
+    'ETH ETF-related chatter is picking up again across monitored macro channels.',
+    'ETF narratives can pull short-term liquidity into ETH beta names before broader media catches up.',
+    null
+  ),
+  (
+    'cccccccc-cccc-cccc-cccc-ccccccccccc3',
+    'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb3',
+    'cluster-layer2-partnership',
+    'partnership',
+    'neutral',
+    68,
+    1,
+    'queued',
+    'A Layer-2 distribution partnership is being discussed, but hard traction data is still missing.',
+    'Partnership headlines matter when they produce measurable usage, not just announcements.',
+    null
+  )
+on conflict (cluster_fingerprint) do update
+set canonical_message_id = excluded.canonical_message_id,
+    category = excluded.category,
+    bias = excluded.bias,
+    signal_score = excluded.signal_score,
+    corroboration_count = excluded.corroboration_count,
+    status = excluded.status,
+    summary = excluded.summary,
+    why_it_matters = excluded.why_it_matters,
+    promoted_article_id = excluded.promoted_article_id,
+    updated_at = now();
+
+insert into telegram_cluster_messages (cluster_id, message_id, is_canonical)
+values
+  ('cccccccc-cccc-cccc-cccc-ccccccccccc1', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1', true),
+  ('cccccccc-cccc-cccc-cccc-ccccccccccc1', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb4', false),
+  ('cccccccc-cccc-cccc-cccc-ccccccccccc2', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2', true),
+  ('cccccccc-cccc-cccc-cccc-ccccccccccc3', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb3', true)
+on conflict (cluster_id, message_id) do update
+set is_canonical = excluded.is_canonical;

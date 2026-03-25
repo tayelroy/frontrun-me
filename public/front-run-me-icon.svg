@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" role="img" aria-label="FrontRunMe">
+  <defs>
+    <linearGradient id="frmGradient" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#cc97ff" />
+      <stop offset="100%" stop-color="#8ce7ff" />
+    </linearGradient>
+  </defs>
+  <rect width="180" height="180" rx="44" fill="#0e0e0f" />
+  <rect x="14" y="14" width="152" height="152" rx="36" fill="url(#frmGradient)" opacity="0.12" />
+  <path
+    d="M49 49h54c20 0 33 11 33 28 0 12-7 21-18 25l21 29h-28l-17-24H76v24H49V49zm27 22v15h23c7 0 11-3 11-8 0-5-4-7-11-7H76zm0 37h22l14 23H76v-23z"
+    fill="url(#frmGradient)"
+  />
+</svg>

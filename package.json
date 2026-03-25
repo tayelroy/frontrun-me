@@ -7,14 +7,19 @@
     "build": "next build",
     "start": "next start",
     "db:init": "node scripts/run-sql.mjs src/db/schema.sql",
-    "db:seed": "node scripts/run-sql.mjs src/db/seed.sql"
+    "db:seed": "node scripts/run-sql.mjs src/db/seed.sql",
+    "telegram:login": "tsx scripts/telegram-login.ts",
+    "telegram:ingest": "tsx scripts/telegram-ingest.ts"
   },
   "dependencies": {
+    "@okxconnect/ui": "^1.9.1",
+    "@okxconnect/universal-provider": "^1.9.1",
     "@supabase/supabase-js": "^2.100.0",
     "next": "^15.1.6",
     "pg": "^8.13.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "telegram": "^2.26.22",
     "zod": "^3.24.1"
   },
   "devDependencies": {
@@ -22,6 +27,7 @@
     "@types/pg": "^8.20.0",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
+    "tsx": "^4.19.3",
     "typescript": "^5.8.3"
   }
 }

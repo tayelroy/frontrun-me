@@ -36,6 +36,22 @@ The `src/` folder from the original scaffold is kept as legacy reference, but th
 
 The database scripts use a small Node runner in `scripts/run-sql.mjs`, so you do not need the `psql` CLI installed locally.
 
+## Real Telegram ingestion
+
+This repo now includes a real Telegram worker path using a Telegram user-session client.
+
+1. Set `TELEGRAM_API_ID` and `TELEGRAM_API_HASH` in `.env` or `.env.local`.
+2. Run `npm run telegram:login` once to generate a `TELEGRAM_SESSION`.
+3. Add that session string to `.env` or `.env.local`.
+4. Insert real channel rows into `telegram_sources`.
+5. Run `npm run telegram:ingest` to pull live messages into the database.
+
+Notes:
+
+- This path is designed for channels your authenticated Telegram account is allowed to access.
+- If a source has a public username, the worker can resolve it more reliably than a raw channel id alone.
+- You can target a subset of sources with `npm run telegram:ingest -- <name-or-username>`.
+
 ## Hosted Postgres
 
 Recommended path: Supabase.
@@ -63,6 +79,7 @@ For this app, a normal hosted Postgres connection is enough. The server reads `D
 
 - `/` - public landing page
 - `/admin/catalog` - source and content ops
+- `/admin/telegram` - Telegram channel aggregation and clustering ops
 - `/admin/pricing` - payment and entitlement surface
 - `/admin/forecast` - published insight feed
 
@@ -78,3 +95,5 @@ If `telegramChannelId` is omitted from the webhook payload, the route falls back
 ## Production note
 
 The Telegram invite helper currently stores a placeholder link. Swap it with the Telegram bot API when you are ready to issue real join links.
+
+Telegram aggregation planning and scaffolding notes live in [docs/telegram-aggregation.md](/Users/tayelroy/Documents/New project/docs/telegram-aggregation.md).

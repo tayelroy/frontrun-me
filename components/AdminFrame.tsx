@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 type AdminFrameProps = {
-  active: 'catalog' | 'pricing' | 'forecast';
+  active: 'catalog' | 'telegram' | 'pricing' | 'forecast';
   title: string;
   subtitle: string;
   children: ReactNode;
@@ -23,6 +23,10 @@ export function AdminFrame({ active, title, subtitle, children }: AdminFrameProp
           <Link href="/admin/catalog" className={active === 'catalog' ? 'active' : ''}>
             <span className="nav-pill" />
             Catalog
+          </Link>
+          <Link href="/admin/telegram" className={active === 'telegram' ? 'active' : ''}>
+            <span className="nav-pill" />
+            Telegram Intake
           </Link>
           <Link href="/admin/pricing" className={active === 'pricing' ? 'active' : ''}>
             <span className="nav-pill" />
