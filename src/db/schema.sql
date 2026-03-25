@@ -80,10 +80,28 @@ create table if not exists access_grants (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references app_users(id) on delete cascade,
   payment_session_id uuid not null references payment_sessions(id) on delete cascade,
-  telegram_invite_id uuid not null unique references telegram_invites(id) on delete cascade,
+  telegram_invite_id uuid unique references telegram_invites(id) on delete cascade,
   granted_at timestamptz not null default now(),
   expires_at timestamptz
 );
+
+alter table if exists access_grants
+  alter column telegram_invite_id drop not null;
+
+create table if not exists telegram_bot_access (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null unique references app_users(id) on delete cascade,
+  access_code text not null unique,
+  telegram_user_id text,
+  telegram_handle text,
+  claimed_at timestamptz,
+  revoked_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists telegram_bot_access_code_idx on telegram_bot_access (access_code);
+create index if not exists telegram_bot_access_user_idx on telegram_bot_access (user_id);
 
 create table if not exists delivery_events (
   id uuid primary key default gen_random_uuid(),

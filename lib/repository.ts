@@ -1,4 +1,3 @@
-import 'server-only';
 import type { PoolClient } from 'pg';
 import { query } from './db';
 import type {
@@ -69,6 +68,9 @@ export async function getAccessByWallet(walletAddress: string): Promise<AccessSn
           ps.status as "paymentStatus",
           ti.invite_link as "inviteLink",
           ti.channel_id as "channelId",
+          tba.access_code as "accessCode",
+          tba.telegram_user_id as "linkedTelegramUserId",
+          tba.claimed_at as "accessCodeClaimedAt",
           ti.revoked_at as "revokedAt",
           ag.granted_at as "grantedAt",
           ag.expires_at as "expiresAt"
@@ -76,6 +78,7 @@ export async function getAccessByWallet(walletAddress: string): Promise<AccessSn
         left join payment_sessions ps on ps.user_id = u.id and ps.status = 'paid'
         left join access_grants ag on ag.user_id = u.id
         left join telegram_invites ti on ti.id = ag.telegram_invite_id
+        left join telegram_bot_access tba on tba.user_id = u.id and tba.revoked_at is null
         where lower(u.wallet_address) = lower($1)
         order by coalesce(ag.granted_at, ps.updated_at, u.updated_at) desc
         limit 1
@@ -381,7 +384,7 @@ export async function createTelegramInvite(
 
 export async function grantAccess(
   db: Db,
-  input: { userId: string; paymentSessionId: string; telegramInviteId: string; expiresAt?: string | null }
+  input: { userId: string; paymentSessionId: string; telegramInviteId?: string | null; expiresAt?: string | null }
 ) {
   const result = await db.query(
     `
@@ -393,6 +396,111 @@ export async function grantAccess(
   );
 
   return result.rows[0];
+}
+
+export async function upsertTelegramBotAccessCode(db: Db, input: { userId: string; accessCode: string }) {
+  const result = await db.query(
+    `
+      insert into telegram_bot_access (user_id, access_code)
+      values ($1, $2)
+      on conflict (user_id)
+      do update set
+        access_code = telegram_bot_access.access_code,
+        revoked_at = null,
+        updated_at = now()
+      returning *
+    `,
+    [input.userId, input.accessCode]
+  );
+
+  return result.rows[0];
+}
+
+export async function getTelegramBotAccessByCode(accessCode: string) {
+  const result = await query<{
+    id: string;
+    userId: string;
+    accessCode: string;
+    telegramUserId: string | null;
+    telegramHandle: string | null;
+    claimedAt: string | null;
+    revokedAt: string | null;
+    walletAddress: string;
+    grantedAt: string | null;
+    expiresAt: string | null;
+  }>(
+    `
+      select
+        tba.id,
+        tba.user_id as "userId",
+        tba.access_code as "accessCode",
+        tba.telegram_user_id as "telegramUserId",
+        tba.telegram_handle as "telegramHandle",
+        tba.claimed_at::text as "claimedAt",
+        tba.revoked_at::text as "revokedAt",
+        u.wallet_address as "walletAddress",
+        ag.granted_at::text as "grantedAt",
+        ag.expires_at::text as "expiresAt"
+      from telegram_bot_access tba
+      join app_users u on u.id = tba.user_id
+      left join access_grants ag on ag.user_id = u.id
+      where upper(tba.access_code) = upper($1)
+      order by coalesce(ag.granted_at, tba.updated_at, tba.created_at) desc
+      limit 1
+    `,
+    [accessCode]
+  );
+
+  return result.rows[0] ?? null;
+}
+
+export async function claimTelegramBotAccessCode(
+  db: Db,
+  input: { accessCode: string; telegramUserId: string; telegramHandle?: string | null }
+) {
+  const result = await db.query(
+    `
+      update telegram_bot_access
+      set telegram_user_id = $2,
+          telegram_handle = coalesce($3, telegram_handle),
+          claimed_at = coalesce(claimed_at, now()),
+          revoked_at = null,
+          updated_at = now()
+      where upper(access_code) = upper($1)
+      returning *
+    `,
+    [input.accessCode, input.telegramUserId, input.telegramHandle ?? null]
+  );
+
+  return result.rows[0] ?? null;
+}
+
+export async function getTelegramBotAccessByTelegramUserId(telegramUserId: string) {
+  const result = await query<{
+    accessCode: string;
+    walletAddress: string;
+    revokedAt: string | null;
+    grantedAt: string | null;
+    expiresAt: string | null;
+  }>(
+    `
+      select
+        tba.access_code as "accessCode",
+        u.wallet_address as "walletAddress",
+        tba.revoked_at::text as "revokedAt",
+        ag.granted_at::text as "grantedAt",
+        ag.expires_at::text as "expiresAt"
+      from telegram_bot_access tba
+      join app_users u on u.id = tba.user_id
+      left join access_grants ag on ag.user_id = u.id
+      where tba.telegram_user_id = $1
+      order by coalesce(ag.granted_at, tba.updated_at, tba.created_at) desc
+      limit 1
+    `,
+    [telegramUserId]
+  );
+
+  return result.rows[0] ?? null;
 }
 
 export async function insertNewsSource(

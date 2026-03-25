@@ -21,11 +21,13 @@ const DISCONNECTED_SNAPSHOT: WalletSnapshot = {
 };
 
 const REQUIRED_EVM_CHAINS = ['eip155:1'];
-const OPTIONAL_EVM_CHAINS = ['eip155:8453', 'eip155:42161', 'eip155:10'];
+const OPTIONAL_EVM_CHAINS = ['eip155:8453', 'eip155:42161', 'eip155:10', 'eip155:196', 'eip155:1952'];
 
 const EVM_RPC_MAP: Record<string, string> = {
   '1': 'https://ethereum-rpc.publicnode.com',
   '10': 'https://mainnet.optimism.io',
+  '196': 'https://rpc.xlayer.tech',
+  '1952': 'https://testrpc.xlayer.tech',
   '42161': 'https://arb1.arbitrum.io/rpc',
   '8453': 'https://mainnet.base.org'
 };

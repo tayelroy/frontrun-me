@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { CheckoutPanel } from '@/components/payments/CheckoutPanel';
 import { ConnectWalletButton } from '@/components/wallet/ConnectWalletButton';
 import { getTelegramAggregationOverview, listPublishedInsights } from '@/lib/repository';
 import type { PreviewInsight, SignalBias } from '@/lib/types';
@@ -299,9 +300,7 @@ export default async function HomePage() {
                 <div className="frm-price">
                   $299<span>.00</span>
                 </div>
-                <Link className="frm-button frm-button-solid" href="/admin/pricing">
-                  Unlock via x402
-                </Link>
+                <CheckoutPanel />
                 <p className="frm-price-note">Supported rails: ETH, BASE, SOL, ARB</p>
               </div>
             </div>
