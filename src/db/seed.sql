@@ -205,7 +205,7 @@ values
     'premium',
     95,
     'macro',
-    true,
+    false,
     18342,
     now() - interval '6 minutes'
   ),
@@ -218,7 +218,7 @@ values
     'premium',
     100,
     'exploit',
-    true,
+    false,
     9281,
     now() - interval '3 minutes'
   ),
@@ -231,7 +231,7 @@ values
     'preview',
     82,
     'partnership',
-    true,
+    false,
     5512,
     now() - interval '12 minutes'
   )
@@ -478,3 +478,8 @@ values
   ('cccccccc-cccc-cccc-cccc-ccccccccccc3', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb3', true)
 on conflict (cluster_id, message_id) do update
 set is_canonical = excluded.is_canonical;
+
+update telegram_signal_clusters
+set delivery_status = 'sent',
+    delivered_at = now() - interval '9 minutes'
+where id = 'cccccccc-cccc-cccc-cccc-ccccccccccc1';

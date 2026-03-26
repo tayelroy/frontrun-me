@@ -23,7 +23,7 @@ function parseEnv(contents) {
     if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
       value = value.slice(1, -1);
     }
-    if (process.env[key] === undefined) {
+    if (process.env[key] === undefined || (process.env[key] === '' && value !== '')) {
       process.env[key] = value;
     }
   }

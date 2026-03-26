@@ -1,6 +1,7 @@
 import type { PoolClient } from 'pg';
 import type { TelegramClient } from 'telegram';
 import { query, withTransaction } from '../db';
+import { env } from '../env';
 import type { TelegramRawMessage } from './normalize';
 import { normalizeTelegramMessage } from './normalize';
 import { buildClusterFingerprint, scoreTelegramCandidate } from './dedupe';
@@ -122,6 +123,19 @@ function getTelegramSenderName(message: any, sourceName: string, entity: any) {
   return sourceName;
 }
 
+function getMessageDateMs(message: any) {
+  if (message?.date instanceof Date) {
+    return message.date.getTime();
+  }
+
+  if (typeof message?.date === 'number') {
+    return message.date * 1000;
+  }
+
+  const parsed = Date.parse(message?.date ?? '');
+  return Number.isNaN(parsed) ? Date.now() : parsed;
+}
+
 function buildSafeTelegramPayload(message: any, entity: any) {
   return {
     id: message?.id ?? null,
@@ -170,11 +184,18 @@ async function collectTelegramMessages(
 ) {
   const entity = await resolveTelegramEntity(client, source);
   const minId = source.lastProcessedMessageId ? Number(source.lastProcessedMessageId) : 0;
+  const limit = source.lastProcessedMessageId ? env.TELEGRAM_INGEST_LIMIT : Math.min(env.TELEGRAM_INGEST_LIMIT, 25);
+  const cutoffMs = Date.now() - env.TELEGRAM_INGEST_LOOKBACK_DAYS * 24 * 60 * 60 * 1000;
   const collected: TelegramMessageBatchItem[] = [];
 
-  for await (const message of client.iterMessages(entity, { minId, reverse: true })) {
+  for await (const message of client.iterMessages(entity, { minId, limit, waitTime: env.TELEGRAM_INGEST_WAIT_TIME })) {
     if (!message || typeof message.id !== 'number') {
       continue;
+    }
+
+    const messageDateMs = getMessageDateMs(message);
+    if (messageDateMs < cutoffMs) {
+      break;
     }
 
     const text = getTelegramMessageText(message);
@@ -260,6 +281,7 @@ export async function ingestTelegramSources(
   const results: TelegramSourceIngestionResult[] = [];
 
   for (const source of filteredSources) {
+    console.log(`Ingesting ${source.sourceName} (@${source.telegramUsername ?? source.telegramChannelId})...`);
     const run = await createTelegramIngestionRun(globalDb, {
       sourceId: source.id,
       startedAt: new Date().toISOString()
@@ -367,6 +389,9 @@ export async function ingestTelegramSources(
       });
 
       results.push(sourceResult);
+      console.log(
+        `Completed ${source.sourceName}: fetched=${sourceResult.fetchedCount} inserted=${sourceResult.insertedCount} deduped=${sourceResult.dedupedCount} clusters=${sourceResult.clusterCount}`
+      );
       await finalizeTelegramIngestionRun(globalDb, {
         runId: run.id,
         status: 'completed',
@@ -377,6 +402,7 @@ export async function ingestTelegramSources(
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`Failed ${source.sourceName}: ${errorMessage}`);
 
       await finalizeTelegramIngestionRun(globalDb, {
         runId: run.id,

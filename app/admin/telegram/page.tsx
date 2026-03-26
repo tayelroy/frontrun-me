@@ -37,6 +37,10 @@ export default async function TelegramPage() {
               <strong>{overview.clusters}</strong>
               <span>Signal clusters</span>
             </div>
+            <div className="mini-stat">
+              <strong>{overview.newClusters}</strong>
+              <span>New pool items</span>
+            </div>
           </div>
         </div>
         <div className="hero-card">
@@ -70,6 +74,10 @@ export default async function TelegramPage() {
             <div className="kpi">
               <span>Promoted clusters</span>
               <strong>{overview.promotedClusters}</strong>
+            </div>
+            <div className="kpi">
+              <span>Sent clusters</span>
+              <strong>{overview.sentClusters}</strong>
             </div>
             <div className="kpi">
               <span>Failed runs</span>
@@ -170,6 +178,7 @@ export default async function TelegramPage() {
                   <div style={{ marginTop: 8 }} className={`badge ${cluster.status === 'reviewed' ? 'green' : cluster.status === 'queued' ? 'orange' : 'blue'}`}>
                     {cluster.status}
                   </div>
+                  <div style={{ marginTop: 8, color: 'var(--text-soft)' }}>delivery: {cluster.deliveryStatus}</div>
                 </div>
               ))
             ) : (

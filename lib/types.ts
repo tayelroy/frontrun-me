@@ -6,12 +6,14 @@ export type SignalCategory =
   | 'listing'
   | 'fundraising'
   | 'watchlist';
+export type TelegramSourceCategory = SignalCategory | 'defi' | 'nft' | 'gaming' | 'ai' | 'infra' | 'other';
 
 export type SignalBias = 'bullish' | 'bearish' | 'neutral' | 'urgent';
 export type TelegramAccessMode = 'bot' | 'user_session' | 'manual';
 export type TelegramSourceTier = 'preview' | 'premium' | 'internal';
 export type TelegramRunStatus = 'running' | 'completed' | 'failed';
 export type TelegramClusterStatus = 'queued' | 'reviewed' | 'promoted' | 'published' | 'discarded';
+export type TelegramDeliveryStatus = 'new' | 'sent' | 'ignored';
 
 export interface PreviewInsight {
   id: string;
@@ -50,6 +52,8 @@ export interface TelegramAggregationOverview {
   candidateMessages: number;
   clusters: number;
   promotedClusters: number;
+  newClusters: number;
+  sentClusters: number;
   completedRuns: number;
   failedRuns: number;
 }
@@ -62,7 +66,7 @@ export interface TelegramSourceStatus {
   accessMode: TelegramAccessMode;
   tier: TelegramSourceTier;
   priority: number;
-  category: SignalCategory;
+  category: TelegramSourceCategory;
   isActive: boolean;
   lastProcessedMessageId: string | null;
   lastSeenAt: string | null;
@@ -81,7 +85,7 @@ export interface TelegramSourceConfig {
   accessMode: TelegramAccessMode;
   tier: TelegramSourceTier;
   priority: number;
-  category: SignalCategory;
+  category: TelegramSourceCategory;
   lastProcessedMessageId: string | null;
   lastSeenAt: string | null;
 }
@@ -94,6 +98,7 @@ export interface TelegramClusterPreview {
   signalScore: number;
   corroborationCount: number;
   status: TelegramClusterStatus;
+  deliveryStatus: TelegramDeliveryStatus;
   summary: string | null;
   whyItMatters: string | null;
   postedAt: string;

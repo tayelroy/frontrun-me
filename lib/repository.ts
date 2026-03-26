@@ -8,6 +8,7 @@ import type {
   TelegramAggregationOverview,
   TelegramClusterPreview,
   TelegramSourceConfig,
+  TelegramSourceCategory,
   TelegramSourceStatus
 } from './types';
 
@@ -138,6 +139,8 @@ export async function getTelegramAggregationOverview(): Promise<TelegramAggregat
       candidate_messages: string;
       clusters: string;
       promoted_clusters: string;
+      new_clusters: string;
+      sent_clusters: string;
       completed_runs: string;
       failed_runs: string;
     }>(
@@ -149,6 +152,8 @@ export async function getTelegramAggregationOverview(): Promise<TelegramAggregat
           (select count(*) from telegram_messages where is_candidate = true) as candidate_messages,
           (select count(*) from telegram_signal_clusters) as clusters,
           (select count(*) from telegram_signal_clusters where status in ('promoted', 'published')) as promoted_clusters,
+          (select count(*) from telegram_signal_clusters where delivery_status = 'new') as new_clusters,
+          (select count(*) from telegram_signal_clusters where delivery_status = 'sent') as sent_clusters,
           (select count(*) from telegram_ingestion_runs where status = 'completed') as completed_runs,
           (select count(*) from telegram_ingestion_runs where status = 'failed') as failed_runs
       `
@@ -161,6 +166,8 @@ export async function getTelegramAggregationOverview(): Promise<TelegramAggregat
       candidateMessages: Number(result.rows[0]?.candidate_messages ?? 0),
       clusters: Number(result.rows[0]?.clusters ?? 0),
       promotedClusters: Number(result.rows[0]?.promoted_clusters ?? 0),
+      newClusters: Number(result.rows[0]?.new_clusters ?? 0),
+      sentClusters: Number(result.rows[0]?.sent_clusters ?? 0),
       completedRuns: Number(result.rows[0]?.completed_runs ?? 0),
       failedRuns: Number(result.rows[0]?.failed_runs ?? 0)
     };
@@ -172,6 +179,8 @@ export async function getTelegramAggregationOverview(): Promise<TelegramAggregat
       candidateMessages: 0,
       clusters: 0,
       promotedClusters: 0,
+      newClusters: 0,
+      sentClusters: 0,
       completedRuns: 0,
       failedRuns: 0
     };
@@ -263,6 +272,7 @@ export async function listTelegramClusters(limit = 6): Promise<TelegramClusterPr
       signalScore: string;
       corroborationCount: string;
       status: TelegramClusterPreview['status'];
+      deliveryStatus: TelegramClusterPreview['deliveryStatus'];
       summary: string | null;
       whyItMatters: string | null;
       postedAt: string;
@@ -276,6 +286,7 @@ export async function listTelegramClusters(limit = 6): Promise<TelegramClusterPr
           tsc.signal_score::text as "signalScore",
           tsc.corroboration_count::text as "corroborationCount",
           tsc.status,
+          tsc.delivery_status as "deliveryStatus",
           tsc.summary,
           tsc.why_it_matters as "whyItMatters",
           tm.posted_at::text as "postedAt"
@@ -283,6 +294,55 @@ export async function listTelegramClusters(limit = 6): Promise<TelegramClusterPr
         join telegram_messages tm on tm.id = tsc.canonical_message_id
         join telegram_sources ts on ts.id = tm.source_id
         order by tm.posted_at desc
+        limit $1
+      `,
+      [limit]
+    );
+
+    return result.rows.map((row) => ({
+      ...row,
+      signalScore: Number(row.signalScore),
+      corroborationCount: Number(row.corroborationCount)
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export async function listPendingDigestClusters(limit = 12): Promise<TelegramClusterPreview[]> {
+  try {
+    const result = await query<{
+      id: string;
+      sourceName: string;
+      category: SignalCategory;
+      bias: SignalBias;
+      signalScore: string;
+      corroborationCount: string;
+      status: TelegramClusterPreview['status'];
+      deliveryStatus: TelegramClusterPreview['deliveryStatus'];
+      summary: string | null;
+      whyItMatters: string | null;
+      postedAt: string;
+    }>(
+      `
+        select
+          tsc.id,
+          ts.source_name as "sourceName",
+          tsc.category,
+          tsc.bias,
+          tsc.signal_score::text as "signalScore",
+          tsc.corroboration_count::text as "corroborationCount",
+          tsc.status,
+          tsc.delivery_status as "deliveryStatus",
+          tsc.summary,
+          tsc.why_it_matters as "whyItMatters",
+          tm.posted_at::text as "postedAt"
+        from telegram_signal_clusters tsc
+        join telegram_messages tm on tm.id = tsc.canonical_message_id
+        join telegram_sources ts on ts.id = tm.source_id
+        where tsc.delivery_status = 'new'
+          and tsc.status in ('reviewed', 'promoted', 'published')
+        order by tsc.signal_score desc, tm.posted_at desc
         limit $1
       `,
       [limit]
@@ -533,7 +593,7 @@ export async function upsertTelegramSource(
     accessMode: 'bot' | 'user_session' | 'manual';
     tier?: 'preview' | 'premium' | 'internal';
     priority?: number;
-    category?: SignalCategory;
+    category?: TelegramSourceCategory;
     isActive?: boolean;
     lastProcessedMessageId?: number | null;
     lastSeenAt?: string | null;

@@ -1,5 +1,6 @@
 import { canTelegramUserAccessBot, redeemTelegramAccessCode } from '../access';
 import { listPublishedInsights } from '../repository';
+import { getLatestDigestSummary } from './digest';
 
 type TelegramUpdate = {
   update_id: number;
@@ -62,6 +63,14 @@ export async function buildTelegramBotReply(update: TelegramUpdate) {
   }
 
   if (/what('?| i)s important today\??/i.test(text)) {
+    const latestDigest = await getLatestDigestSummary();
+    if (latestDigest) {
+      return {
+        chatId: message.chat.id,
+        text: latestDigest
+      };
+    }
+
     const insights = await listPublishedInsights(3);
     const body =
       insights.length > 0

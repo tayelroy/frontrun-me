@@ -31,7 +31,7 @@ The `src/` folder from the original scaffold is kept as legacy reference, but th
 1. Install dependencies.
 2. Set `DATABASE_URL`.
 3. Run `npm run db:init`.
-4. Run `npm run db:seed` if you want sample content immediately.
+4. Run `npm run db:seed` if you want sample content immediately plus your local Telegram source registry, when `config/telegram-sources.json` exists.
 5. Run `npm run dev`.
 
 The database scripts use a small Node runner in `scripts/run-sql.mjs`, so you do not need the `psql` CLI installed locally.
@@ -44,15 +44,19 @@ This repo now includes a real Telegram worker path using a Telegram user-session
 2. Run `npm run telegram:login` once to generate a `TELEGRAM_SESSION`.
 3. Add that session string to `.env` or `.env.local`.
 4. Copy `config/telegram-sources.example.json` to `config/telegram-sources.json` and add your real crypto channels.
-5. Run `npm run telegram:sources` to sync all configured channels into `telegram_sources`.
+5. Run `npm run db:seed` or `npm run telegram:sources` to sync all configured channels into `telegram_sources`.
 6. Run `npm run telegram:ingest` to pull live messages into the database.
+7. Run `npm run telegram:digest` to send the current unsent cluster pool to your Telegram bot chat.
 
 Notes:
 
 - This path is designed for channels your authenticated Telegram account is allowed to access.
 - If a source has a public username, the worker can resolve it more reliably than a raw channel id alone.
 - If you do not know the numeric channel id yet, you can use `telegramUsername` only. The sync script will create a stable synthetic source id like `telegram:@channelname`.
+- The ingest worker only considers the last `TELEGRAM_INGEST_LOOKBACK_DAYS` days of history, defaulting to `7`.
+- `db:seed` will sync `config/telegram-sources.json` automatically if the file exists.
 - You can target a subset of sources with `npm run telegram:ingest -- <name-or-username>`.
+- Digest delivery requires `TELEGRAM_BOT_TOKEN` and `TELEGRAM_DIGEST_CHAT_ID`.
 
 ## Hosted Postgres
 
