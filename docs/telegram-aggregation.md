@@ -8,10 +8,11 @@ This repo now includes the storage and server-side scaffolding for Telegram chan
 2. Record each worker pass in `telegram_ingestion_runs`
 3. Persist raw normalized posts in `telegram_messages`
 4. Group related chatter into `telegram_signal_clusters`
-5. Treat unsent clusters as the "new information pool"
-6. Attach supporting posts in `telegram_cluster_messages`
-7. Send a digest and mark delivered clusters as the "old information pool"
-8. Promote reviewed clusters into `news_articles` and `news_insights`
+5. Verify each cluster via Twitter links and onchain transactions (OKX Onchain OS)
+6. Treat unsent clusters as the "new information pool"
+7. Attach supporting posts in `telegram_cluster_messages`
+8. Send a digest and mark delivered clusters as the "old information pool"
+9. Promote reviewed clusters into `news_articles` and `news_insights`
 
 ## Code touchpoints
 
@@ -22,6 +23,7 @@ This repo now includes the storage and server-side scaffolding for Telegram chan
 - `lib/telegram/normalize.ts`
 - `lib/telegram/dedupe.ts`
 - `lib/telegram/pipeline.ts`
+- `lib/onchainos/news-verification.ts`
 - `scripts/telegram-sync-sources.ts`
 - `config/telegram-sources.example.json`
 - `app/admin/telegram/page.tsx`
@@ -34,6 +36,7 @@ This repo now includes the storage and server-side scaffolding for Telegram chan
 4. Run `npm run telegram:ingest`
 5. Run `npm run telegram:promote`
 6. Run `npm run telegram:digest`
+7. Run `npm run telegram:brief` when you want the full ingest-to-brief flow in one command and the final message echoed to the terminal.
 
 If a channel has a public username, you can omit the numeric channel id. The sync script will generate a stable synthetic id and the worker will resolve the entity by username first.
 

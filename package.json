@@ -14,6 +14,7 @@
     "telegram:sources": "tsx scripts/telegram-sync-sources.ts",
     "telegram:ingest": "tsx scripts/telegram-ingest.ts",
     "telegram:promote": "tsx scripts/telegram-promote-clusters.ts",
+    "telegram:brief": "tsx scripts/telegram-brief.ts",
     "picoclaw:tunnel": "tsx scripts/picoclaw-tunnel.ts",
     "picoclaw:check": "tsx scripts/picoclaw-check.ts"
   },

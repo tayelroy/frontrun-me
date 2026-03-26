@@ -50,6 +50,8 @@ This repo now includes a real Telegram worker path using a Telegram user-session
 8. Run `npm run telegram:digest` to send the current unsent cluster pool to your Telegram bot chat.
 9. Set `PICOCLAW_SSH_TARGET` and `PICOCLAW_SSH_KEY` so the digest step can call `picoclaw agent -m` directly on your VM.
 10. Verify the VM connection with `npm run picoclaw:check` before you try the digest.
+11. Run `npm run telegram:brief` when you want the full ingest, promote, Picoclaw digest, Telegram send, and terminal output in one command.
+12. (Optional but recommended) configure `ONCHAINOS_VERIFY_API_BASE` and `ONCHAINOS_API_KEY` to verify Telegram signals against Twitter links and onchain transactions via OKX Onchain OS.
 
 Notes:
 
@@ -59,11 +61,13 @@ Notes:
 - The ingest worker only considers the last `TELEGRAM_INGEST_LOOKBACK_DAYS` days of history, defaulting to `7`.
 - The digest AI step only sends the most recent `TELEGRAM_DIGEST_CONTEXT_LIMIT` clusters to Picoclaw for summarization, defaulting to `6`.
 - The digest AI client uses SSH to run `picoclaw agent -m` on your VM. Set `PICOCLAW_SSH_TARGET` and `PICOCLAW_SSH_KEY` in `.env` or `.env.local`.
+- Ingestion includes OnchainOS verification. If `ONCHAINOS_VERIFY_API_BASE` is not set, local link/tx heuristics still run and clusters are tagged as `unverified`, `partial`, or `verified`.
 - `npm run picoclaw:check` sends a small probe through that SSH path and is the quickest way to verify the VM side is reachable.
 - `db:seed` will sync `config/telegram-sources.json` automatically if the file exists.
 - You can target a subset of sources with `npm run telegram:ingest -- <name-or-username>`.
 - Digest delivery requires `TELEGRAM_BOT_TOKEN` and `TELEGRAM_DIGEST_CHAT_ID`.
 - If the SSH path fails, the digest falls back to the deterministic non-AI formatter.
+- `npm run telegram:brief` is the one-shot path that prints the final digest message to your terminal after sending it.
 
 ## Hosted Postgres
 

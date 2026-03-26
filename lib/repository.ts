@@ -267,6 +267,7 @@ export async function listTelegramClusters(limit = 6): Promise<TelegramClusterPr
     const result = await query<{
       id: string;
       sourceName: string;
+      messageText: string | null;
       category: SignalCategory;
       bias: SignalBias;
       signalScore: string;
@@ -276,11 +277,15 @@ export async function listTelegramClusters(limit = 6): Promise<TelegramClusterPr
       summary: string | null;
       whyItMatters: string | null;
       postedAt: string;
+      verificationStatus: TelegramClusterPreview['verificationStatus'];
+      verificationScore: string;
+      verificationSummary: string | null;
     }>(
       `
         select
           tsc.id,
           ts.source_name as "sourceName",
+          tm.message_text as "messageText",
           tsc.category,
           tsc.bias,
           tsc.signal_score::text as "signalScore",
@@ -289,7 +294,10 @@ export async function listTelegramClusters(limit = 6): Promise<TelegramClusterPr
           tsc.delivery_status as "deliveryStatus",
           tsc.summary,
           tsc.why_it_matters as "whyItMatters",
-          tm.posted_at::text as "postedAt"
+          tm.posted_at::text as "postedAt",
+          tsc.verification_status as "verificationStatus",
+          tsc.verification_score::text as "verificationScore",
+          tsc.verification_summary as "verificationSummary"
         from telegram_signal_clusters tsc
         join telegram_messages tm on tm.id = tsc.canonical_message_id
         join telegram_sources ts on ts.id = tm.source_id
@@ -302,7 +310,8 @@ export async function listTelegramClusters(limit = 6): Promise<TelegramClusterPr
     return result.rows.map((row) => ({
       ...row,
       signalScore: Number(row.signalScore),
-      corroborationCount: Number(row.corroborationCount)
+      corroborationCount: Number(row.corroborationCount),
+      verificationScore: Number(row.verificationScore)
     }));
   } catch {
     return [];
@@ -314,6 +323,7 @@ export async function listPendingDigestClusters(limit = 12): Promise<TelegramClu
     const result = await query<{
       id: string;
       sourceName: string;
+      messageText: string | null;
       category: SignalCategory;
       bias: SignalBias;
       signalScore: string;
@@ -323,11 +333,15 @@ export async function listPendingDigestClusters(limit = 12): Promise<TelegramClu
       summary: string | null;
       whyItMatters: string | null;
       postedAt: string;
+      verificationStatus: TelegramClusterPreview['verificationStatus'];
+      verificationScore: string;
+      verificationSummary: string | null;
     }>(
       `
         select
           tsc.id,
           ts.source_name as "sourceName",
+          tm.message_text as "messageText",
           tsc.category,
           tsc.bias,
           tsc.signal_score::text as "signalScore",
@@ -336,7 +350,10 @@ export async function listPendingDigestClusters(limit = 12): Promise<TelegramClu
           tsc.delivery_status as "deliveryStatus",
           tsc.summary,
           tsc.why_it_matters as "whyItMatters",
-          tm.posted_at::text as "postedAt"
+          tm.posted_at::text as "postedAt",
+          tsc.verification_status as "verificationStatus",
+          tsc.verification_score::text as "verificationScore",
+          tsc.verification_summary as "verificationSummary"
         from telegram_signal_clusters tsc
         join telegram_messages tm on tm.id = tsc.canonical_message_id
         join telegram_sources ts on ts.id = tm.source_id
@@ -351,7 +368,8 @@ export async function listPendingDigestClusters(limit = 12): Promise<TelegramClu
     return result.rows.map((row) => ({
       ...row,
       signalScore: Number(row.signalScore),
-      corroborationCount: Number(row.corroborationCount)
+      corroborationCount: Number(row.corroborationCount),
+      verificationScore: Number(row.verificationScore)
     }));
   } catch {
     return [];

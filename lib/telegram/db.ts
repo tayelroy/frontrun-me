@@ -198,6 +198,10 @@ export async function upsertTelegramCluster(
     summary?: string | null;
     whyItMatters?: string | null;
     promotedArticleId?: string | null;
+    verificationStatus?: 'unverified' | 'partial' | 'verified';
+    verificationScore?: number;
+    verificationSummary?: string | null;
+    verificationPayload?: Record<string, unknown>;
   }
 ) {
   const result = await db.query(
@@ -210,11 +214,15 @@ export async function upsertTelegramCluster(
         signal_score,
         corroboration_count,
         status,
+        verification_status,
+        verification_score,
+        verification_summary,
+        verification_payload,
         summary,
         why_it_matters,
         promoted_article_id
       )
-      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       on conflict (cluster_fingerprint)
       do update set
         canonical_message_id = coalesce(telegram_signal_clusters.canonical_message_id, excluded.canonical_message_id),
@@ -225,6 +233,16 @@ export async function upsertTelegramCluster(
         status = case
           when telegram_signal_clusters.status in ('promoted', 'published') then telegram_signal_clusters.status
           else excluded.status
+        end,
+        verification_status = case
+          when telegram_signal_clusters.verification_status = 'verified' then telegram_signal_clusters.verification_status
+          else excluded.verification_status
+        end,
+        verification_score = greatest(telegram_signal_clusters.verification_score, excluded.verification_score),
+        verification_summary = coalesce(excluded.verification_summary, telegram_signal_clusters.verification_summary),
+        verification_payload = case
+          when excluded.verification_payload = '{}'::jsonb then telegram_signal_clusters.verification_payload
+          else excluded.verification_payload
         end,
         summary = coalesce(telegram_signal_clusters.summary, excluded.summary),
         why_it_matters = coalesce(telegram_signal_clusters.why_it_matters, excluded.why_it_matters),
@@ -240,6 +258,10 @@ export async function upsertTelegramCluster(
       input.signalScore,
       input.corroborationCount ?? 1,
       input.status ?? 'queued',
+      input.verificationStatus ?? 'unverified',
+      input.verificationScore ?? 0,
+      input.verificationSummary ?? null,
+      JSON.stringify(input.verificationPayload ?? {}),
       input.summary ?? null,
       input.whyItMatters ?? null,
       input.promotedArticleId ?? null
