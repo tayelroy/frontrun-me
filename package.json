@@ -7,8 +7,9 @@
     "build": "next build",
     "start": "next start",
     "db:init": "node scripts/run-sql.mjs src/db/schema.sql",
-    "db:seed": "node scripts/run-sql.mjs src/db/seed.sql",
+    "db:seed": "node --import tsx scripts/db-seed.ts",
     "telegram:bot": "tsx scripts/telegram-bot.ts",
+    "telegram:digest": "tsx scripts/telegram-send-digest.ts",
     "telegram:login": "tsx scripts/telegram-login.ts",
     "telegram:sources": "tsx scripts/telegram-sync-sources.ts",
     "telegram:ingest": "tsx scripts/telegram-ingest.ts"

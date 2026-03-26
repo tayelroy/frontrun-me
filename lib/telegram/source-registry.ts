@@ -11,7 +11,7 @@ const sourceSchema = z
     accessMode: z.enum(['bot', 'user_session', 'manual']).default('user_session'),
     tier: z.enum(['preview', 'premium', 'internal']).default('premium'),
     priority: z.number().int().min(0).max(100).default(50),
-    category: z.enum(['exploit', 'regulation', 'partnership', 'macro', 'listing', 'fundraising', 'watchlist']).default('watchlist'),
+    category: z.enum(['exploit', 'regulation', 'partnership', 'macro', 'listing', 'fundraising', 'watchlist', 'defi', 'nft', 'gaming', 'ai', 'infra', 'other']).default('watchlist'),
     isActive: z.boolean().default(true)
   })
   .transform((source) => {

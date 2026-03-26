@@ -179,6 +179,8 @@ create table if not exists telegram_signal_clusters (
   signal_score numeric(5,2) not null default 0,
   corroboration_count integer not null default 1,
   status text not null default 'queued' check (status in ('queued', 'reviewed', 'promoted', 'published', 'discarded')),
+  delivery_status text not null default 'new' check (delivery_status in ('new', 'sent', 'ignored')),
+  delivered_at timestamptz,
   summary text,
   why_it_matters text,
   promoted_article_id uuid references news_articles(id) on delete set null,
@@ -186,7 +188,14 @@ create table if not exists telegram_signal_clusters (
   updated_at timestamptz not null default now()
 );
 
+alter table if exists telegram_signal_clusters
+  add column if not exists delivery_status text not null default 'new';
+
+alter table if exists telegram_signal_clusters
+  add column if not exists delivered_at timestamptz;
+
 create index if not exists telegram_signal_clusters_status_idx on telegram_signal_clusters (status, updated_at desc);
+create index if not exists telegram_signal_clusters_delivery_idx on telegram_signal_clusters (delivery_status, updated_at desc);
 
 create table if not exists telegram_cluster_messages (
   cluster_id uuid not null references telegram_signal_clusters(id) on delete cascade,
@@ -194,4 +203,23 @@ create table if not exists telegram_cluster_messages (
   is_canonical boolean not null default false,
   created_at timestamptz not null default now(),
   primary key (cluster_id, message_id)
+);
+
+create table if not exists digest_runs (
+  id uuid primary key default gen_random_uuid(),
+  destination text not null,
+  started_at timestamptz not null default now(),
+  sent_at timestamptz,
+  status text not null default 'running' check (status in ('running', 'sent', 'failed')),
+  item_count integer not null default 0,
+  summary_text text,
+  error_message text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists digest_run_items (
+  digest_run_id uuid not null references digest_runs(id) on delete cascade,
+  cluster_id uuid not null references telegram_signal_clusters(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (digest_run_id, cluster_id)
 );
