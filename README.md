@@ -1,4 +1,4 @@
-# Signal Room
+# FrontRunMe
 
 Telegram-native crypto intelligence built with Next.js and PostgreSQL.
 
