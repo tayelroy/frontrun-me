@@ -16,10 +16,22 @@ This repo now includes the storage and server-side scaffolding for Telegram chan
 - `src/db/schema.sql`
 - `src/db/seed.sql`
 - `lib/repository.ts`
+- `lib/telegram/source-registry.ts`
 - `lib/telegram/normalize.ts`
 - `lib/telegram/dedupe.ts`
 - `lib/telegram/pipeline.ts`
+- `scripts/telegram-sync-sources.ts`
+- `config/telegram-sources.example.json`
 - `app/admin/telegram/page.tsx`
+
+## Operating the registry
+
+1. Copy `config/telegram-sources.example.json` to `config/telegram-sources.json`
+2. Add the public usernames or channel ids you want to monitor
+3. Run `npm run telegram:sources`
+4. Run `npm run telegram:ingest`
+
+If a channel has a public username, you can omit the numeric channel id. The sync script will generate a stable synthetic id and the worker will resolve the entity by username first.
 
 ## Suggested next milestone
 

@@ -1,0 +1,29 @@
+[
+  {
+    "sourceName": "Whale Wire Daily",
+    "telegramUsername": "whalewiredaily",
+    "accessMode": "user_session",
+    "tier": "premium",
+    "priority": 95,
+    "category": "macro",
+    "isActive": true
+  },
+  {
+    "sourceName": "Onchain Risk Watch",
+    "telegramUsername": "onchainriskwatch",
+    "accessMode": "user_session",
+    "tier": "premium",
+    "priority": 100,
+    "category": "exploit",
+    "isActive": true
+  },
+  {
+    "sourceName": "Token Catalyst Radar",
+    "telegramUsername": "tokencatalystradar",
+    "accessMode": "user_session",
+    "tier": "preview",
+    "priority": 82,
+    "category": "partnership",
+    "isActive": true
+  }
+]
