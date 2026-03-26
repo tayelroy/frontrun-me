@@ -1,7 +1,10 @@
 import type { PoolClient } from 'pg';
+import { env } from '../env';
 import { query, withTransaction } from '../db';
 import { listPendingDigestClusters } from '../repository';
 import type { TelegramClusterPreview } from '../types';
+import { formatTelegramDigestTimestamp, limitTelegramDigestItems, rankTelegramDigestItems, trimTelegramDigestText } from './ranking';
+import { summarizeTelegramDigestWithPicoclaw, type TelegramDigestAiResult } from './ai';
 
 type Db = Pick<PoolClient, 'query'>;
 
@@ -11,45 +14,77 @@ export interface DigestRunRecord {
   status: 'running' | 'sent' | 'failed';
 }
 
-function groupByCategory(items: TelegramClusterPreview[]) {
-  const groups = new Map<string, TelegramClusterPreview[]>();
-
-  for (const item of items) {
-    const bucket = groups.get(item.category) ?? [];
-    bucket.push(item);
-    groups.set(item.category, bucket);
-  }
-
-  return [...groups.entries()];
-}
-
 export async function collectPendingDigestItems(limit = 12) {
   return listPendingDigestClusters(limit);
 }
 
-export function buildTelegramDigestMessage(items: TelegramClusterPreview[]) {
+function buildFallbackTelegramDigestMessage(items: TelegramClusterPreview[]) {
   if (items.length === 0) {
     return 'No new high-signal Telegram clusters are waiting in the queue.';
   }
 
-  const lines: string[] = ['FrontRunMe Digest', '', `${items.length} fresh signal clusters from your monitored Telegram channels.`, ''];
+  const ranked = rankTelegramDigestItems(items);
+  const lines: string[] = [
+    'FrontRunMe Digest',
+    '',
+    `${ranked.length} fresh signal clusters, ranked by recency, urgency, then weightage.`,
+    ''
+  ];
 
-  for (const [category, bucket] of groupByCategory(items)) {
-    lines.push(`${category.toUpperCase()}`);
-
-    for (const item of bucket.slice(0, 4)) {
-      lines.push(
-        `• ${item.sourceName} | ${item.bias} | score ${Math.round(item.signalScore)}`,
-        `${item.summary ?? 'No summary yet.'}`,
-        `Why it matters: ${item.whyItMatters ?? 'Awaiting analyst review.'}`,
-        ''
-      );
-    }
+  for (const [index, item] of ranked.entries()) {
+    lines.push(
+      `${index + 1}. ${item.sourceName} | ${item.category.toUpperCase()} | ${item.bias} | score ${Math.round(item.signalScore)} | ${item.corroborationCount} cites | ${formatTelegramDigestTimestamp(item.postedAt)}`,
+      trimTelegramDigestText(item.summary ?? 'No summary yet.', 220),
+      `Why it matters: ${trimTelegramDigestText(item.whyItMatters ?? 'Awaiting analyst review.', 220)}`,
+      ''
+    );
   }
 
   lines.push('Reply with "what’s important today?" in the bot for the latest verified context.');
 
   return lines.join('\n');
+}
+
+function buildAiDigestMessage(summary: TelegramDigestAiResult) {
+  const lines: string[] = [summary.title, '', summary.intro, ''];
+
+  for (const [index, item] of summary.items.entries()) {
+    const source = item.sourceName;
+    lines.push(
+      `${index + 1}. ${source} | ${item.category.toUpperCase()} | ${item.bias} | score ${Math.round(item.signalScore)} | ${item.corroborationCount} cites | ${formatTelegramDigestTimestamp(item.postedAt)}`,
+      trimTelegramDigestText(item.takeaway, 220),
+      `Why it matters: ${trimTelegramDigestText(item.whyItMatters, 220)}`,
+      ''
+    );
+  }
+
+  if (summary.closing) {
+    lines.push(summary.closing, '');
+  }
+
+  lines.push('Reply with "what’s important today?" in the bot for the latest verified context.');
+
+  return lines.join('\n');
+}
+
+export async function buildTelegramDigestMessage(items: TelegramClusterPreview[]) {
+  const ranked = rankTelegramDigestItems(items);
+  const selected = limitTelegramDigestItems(ranked, env.TELEGRAM_DIGEST_CONTEXT_LIMIT);
+
+  if (selected.length === 0) {
+    return 'No new high-signal Telegram clusters are waiting in the queue.';
+  }
+
+  try {
+    const aiSummary = await summarizeTelegramDigestWithPicoclaw(selected);
+    if (aiSummary) {
+      return buildAiDigestMessage(aiSummary);
+    }
+  } catch (error) {
+    console.warn('Picoclaw digest generation failed, falling back to deterministic digest.', error);
+  }
+
+  return buildFallbackTelegramDigestMessage(selected);
 }
 
 export async function createDigestRun(db: Db, destination: string): Promise<DigestRunRecord> {
@@ -140,10 +175,13 @@ export async function sendDigestWithTracking(input: {
   items: TelegramClusterPreview[];
   deliver: (message: string) => Promise<void>;
 }) {
+  const message = await buildTelegramDigestMessage(input.items);
+
   return withTransaction(async (db) => {
     const digestRun = await createDigestRun(db, input.destination);
-    const clusterIds = input.items.map((item) => item.id);
-    const message = buildTelegramDigestMessage(input.items);
+    const clusterIds = rankTelegramDigestItems(input.items)
+      .slice(0, env.TELEGRAM_DIGEST_CONTEXT_LIMIT)
+      .map((item) => item.id);
 
     try {
       await attachClustersToDigestRun(db, {

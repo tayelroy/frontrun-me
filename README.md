@@ -46,7 +46,10 @@ This repo now includes a real Telegram worker path using a Telegram user-session
 4. Copy `config/telegram-sources.example.json` to `config/telegram-sources.json` and add your real crypto channels.
 5. Run `npm run db:seed` or `npm run telegram:sources` to sync all configured channels into `telegram_sources`.
 6. Run `npm run telegram:ingest` to pull live messages into the database.
-7. Run `npm run telegram:digest` to send the current unsent cluster pool to your Telegram bot chat.
+7. Run `npm run telegram:promote` to mark obvious high-signal clusters as reviewed.
+8. Run `npm run telegram:digest` to send the current unsent cluster pool to your Telegram bot chat.
+9. Set `PICOCLAW_SSH_TARGET` and `PICOCLAW_SSH_KEY` so the digest step can call `picoclaw agent -m` directly on your VM.
+10. Verify the VM connection with `npm run picoclaw:check` before you try the digest.
 
 Notes:
 
@@ -54,9 +57,13 @@ Notes:
 - If a source has a public username, the worker can resolve it more reliably than a raw channel id alone.
 - If you do not know the numeric channel id yet, you can use `telegramUsername` only. The sync script will create a stable synthetic source id like `telegram:@channelname`.
 - The ingest worker only considers the last `TELEGRAM_INGEST_LOOKBACK_DAYS` days of history, defaulting to `7`.
+- The digest AI step only sends the most recent `TELEGRAM_DIGEST_CONTEXT_LIMIT` clusters to Picoclaw for summarization, defaulting to `6`.
+- The digest AI client uses SSH to run `picoclaw agent -m` on your VM. Set `PICOCLAW_SSH_TARGET` and `PICOCLAW_SSH_KEY` in `.env` or `.env.local`.
+- `npm run picoclaw:check` sends a small probe through that SSH path and is the quickest way to verify the VM side is reachable.
 - `db:seed` will sync `config/telegram-sources.json` automatically if the file exists.
 - You can target a subset of sources with `npm run telegram:ingest -- <name-or-username>`.
 - Digest delivery requires `TELEGRAM_BOT_TOKEN` and `TELEGRAM_DIGEST_CHAT_ID`.
+- If the SSH path fails, the digest falls back to the deterministic non-AI formatter.
 
 ## Hosted Postgres
 

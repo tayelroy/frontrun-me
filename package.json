@@ -12,7 +12,10 @@
     "telegram:digest": "tsx scripts/telegram-send-digest.ts",
     "telegram:login": "tsx scripts/telegram-login.ts",
     "telegram:sources": "tsx scripts/telegram-sync-sources.ts",
-    "telegram:ingest": "tsx scripts/telegram-ingest.ts"
+    "telegram:ingest": "tsx scripts/telegram-ingest.ts",
+    "telegram:promote": "tsx scripts/telegram-promote-clusters.ts",
+    "picoclaw:tunnel": "tsx scripts/picoclaw-tunnel.ts",
+    "picoclaw:check": "tsx scripts/picoclaw-check.ts"
   },
   "dependencies": {
     "@okxconnect/ui": "^1.9.1",
