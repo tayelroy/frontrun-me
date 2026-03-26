@@ -46,7 +46,44 @@ This repo now includes a real Telegram worker path using a Telegram user-session
 4. Copy `config/telegram-sources.example.json` to `config/telegram-sources.json` and add your real crypto channels.
 5. Run `npm run db:seed` or `npm run telegram:sources` to sync all configured channels into `telegram_sources`.
 6. Run `npm run telegram:ingest` to pull live messages into the database.
-7. Run `npm run telegram:digest` to send the current unsent cluster pool to your Telegram bot chat.
+7. Run `npm run telegram:promote` to mark obvious high-signal clusters as reviewed.
+8. Run `npm run telegram:digest` to send the current unsent cluster pool to your Telegram bot chat.
+9. Set `PICOCLAW_SSH_TARGET` and `PICOCLAW_SSH_KEY` so the digest step can call `picoclaw agent -m` directly on your VM.
+10. Verify the VM connection with `npm run picoclaw:check` before you try the digest.
+11. Run `npm run telegram:brief` when you want the full ingest, promote, Picoclaw digest, Telegram send, and terminal output in one command.
+12. (Optional but recommended) configure `ONCHAINOS_VERIFY_API_BASE` and `ONCHAINOS_API_KEY` to verify Telegram signals against Twitter links and onchain transactions via OKX Onchain OS.
+
+## Picoclaw HTTP bridge
+
+If you want the app to call Picoclaw over HTTP instead of SSH, run the bridge on your VM:
+
+```bash
+npm run picoclaw:http
+```
+
+It exposes:
+
+- `GET /health`
+- `GET /v1/models`
+- `POST /v1/chat/completions`
+
+Recommended VM env:
+
+```env
+PICOCLAW_HTTP_HOST=127.0.0.1
+PICOCLAW_HTTP_PORT=8787
+PICOCLAW_GATEWAY_CONTAINER=picoclaw-gateway
+PICOCLAW_API_KEY=your-shared-secret
+```
+
+Then point your local app at it:
+
+```env
+PICOCLAW_API_BASE=http://YOUR_VM_IP:8787/v1
+PICOCLAW_API_KEY=your-shared-secret
+```
+
+When `PICOCLAW_API_BASE` is set, the app now prefers HTTP over SSH automatically.
 
 Notes:
 
@@ -54,9 +91,16 @@ Notes:
 - If a source has a public username, the worker can resolve it more reliably than a raw channel id alone.
 - If you do not know the numeric channel id yet, you can use `telegramUsername` only. The sync script will create a stable synthetic source id like `telegram:@channelname`.
 - The ingest worker only considers the last `TELEGRAM_INGEST_LOOKBACK_DAYS` days of history, defaulting to `7`.
+- The digest AI step only sends the most recent `TELEGRAM_DIGEST_CONTEXT_LIMIT` clusters to Picoclaw for summarization, defaulting to `6`.
+- The digest AI client uses SSH to run `picoclaw agent -m` on your VM. Set `PICOCLAW_SSH_TARGET` and `PICOCLAW_SSH_KEY` in `.env` or `.env.local`.
+- If you run `npm run picoclaw:http` on the VM and set `PICOCLAW_API_BASE`, the app will call Picoclaw over HTTP instead of SSH.
+- Ingestion includes OnchainOS verification. If `ONCHAINOS_VERIFY_API_BASE` is not set, local link/tx heuristics still run and clusters are tagged as `unverified`, `partial`, or `verified`.
+- `npm run picoclaw:check` sends a small probe through that SSH path and is the quickest way to verify the VM side is reachable.
 - `db:seed` will sync `config/telegram-sources.json` automatically if the file exists.
 - You can target a subset of sources with `npm run telegram:ingest -- <name-or-username>`.
 - Digest delivery requires `TELEGRAM_BOT_TOKEN` and `TELEGRAM_DIGEST_CHAT_ID`.
+- If the SSH path fails, the digest falls back to the deterministic non-AI formatter.
+- `npm run telegram:brief` is the one-shot path that prints the final digest message to your terminal after sending it.
 
 ## Hosted Postgres
 

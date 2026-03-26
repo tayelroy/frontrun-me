@@ -30,5 +30,5 @@ try {
     }
   }
 } finally {
-  await client.disconnect().catch(() => null);
+  await client.destroy().catch(() => null);
 }

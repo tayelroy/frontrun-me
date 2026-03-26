@@ -1,6 +1,7 @@
 import { AdminFrame } from '@/components/AdminFrame';
 import { getTelegramAggregationOverview, listTelegramClusters, listTelegramSourceStatuses } from '@/lib/repository';
 import { telegramPipelineSteps } from '@/lib/telegram/pipeline';
+import { buildTokenPriceLink, detectFeaturedTokenSymbol } from '@/lib/telegram/token-price';
 
 export const dynamic = 'force-dynamic';
 
@@ -173,7 +174,37 @@ export default async function TelegramPage() {
                   <div>
                     {cluster.category} • {cluster.bias} • score {cluster.signalScore}/100 • corroboration {cluster.corroborationCount}
                   </div>
-                  <div style={{ marginTop: 8 }}>{cluster.summary ?? 'No summary yet.'}</div>
+                  <div style={{ marginTop: 8, color: 'var(--text-soft)' }}>
+                    verification: {cluster.verificationStatus} • boost {cluster.verificationScore}
+                  </div>
+                  <div style={{ marginTop: 8, color: 'var(--text-soft)' }}>
+                    {cluster.verificationSummary ?? 'No external verification signal captured yet.'}
+                  </div>
+                  {(() => {
+                    const tokenSymbol = detectFeaturedTokenSymbol(cluster.messageText ?? cluster.summary ?? cluster.whyItMatters);
+                    const tokenPriceLink = tokenSymbol ? buildTokenPriceLink(tokenSymbol) : null;
+
+                    return (
+                      <div style={{ marginTop: 8 }}>
+                        {cluster.summary ?? 'No summary yet.'}
+                        {tokenPriceLink ? (
+                          <>
+                            {' '}
+                            <a
+                              href={tokenPriceLink.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="badge blue"
+                              style={{ marginLeft: 8 }}
+                              aria-label={`View ${tokenPriceLink.symbol} token price`}
+                            >
+                              {tokenPriceLink.symbol} price
+                            </a>
+                          </>
+                        ) : null}
+                      </div>
+                    );
+                  })()}
                   <div style={{ marginTop: 8, color: 'var(--text-soft)' }}>{cluster.whyItMatters ?? 'Awaiting analyst review.'}</div>
                   <div style={{ marginTop: 8 }} className={`badge ${cluster.status === 'reviewed' ? 'green' : cluster.status === 'queued' ? 'orange' : 'blue'}`}>
                     {cluster.status}

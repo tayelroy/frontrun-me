@@ -23,7 +23,8 @@ async function sendTelegramMessage(chatId: string, text: string) {
     },
     body: JSON.stringify({
       chat_id: chatId,
-      text
+      text,
+      disable_web_page_preview: true
     })
   });
 

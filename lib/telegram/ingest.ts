@@ -6,6 +6,7 @@ import type { TelegramRawMessage } from './normalize';
 import { normalizeTelegramMessage } from './normalize';
 import { buildClusterFingerprint, scoreTelegramCandidate } from './dedupe';
 import { buildTelegramClusterDraft } from './pipeline';
+import { verifyNewsSignalWithOnchainOs } from '../onchainos/news-verification';
 import {
   attachTelegramMessageToCluster,
   createTelegramIngestionRun,
@@ -331,10 +332,18 @@ export async function ingestTelegramSources(
             continue;
           }
 
+          const verification = await verifyNewsSignalWithOnchainOs({
+            messageText: clusterBatch.canonicalNormalized.messageText,
+            normalizedText: clusterBatch.canonicalNormalized.normalizedText,
+            extractedLinks: clusterBatch.canonicalNormalized.extractedLinks
+          });
+
           const draft = buildTelegramClusterDraft({
             normalizedText: clusterBatch.canonicalNormalized.normalizedText,
             extractedLinks: clusterBatch.canonicalNormalized.extractedLinks,
-            corroborationCount: clusterBatch.messageIds.length
+            corroborationCount: clusterBatch.messageIds.length,
+            verificationScoreBoost: verification.scoreBoost,
+            verificationSummary: verification.summary
           });
 
           const cluster = await upsertTelegramCluster(tx, {
@@ -345,6 +354,17 @@ export async function ingestTelegramSources(
             signalScore: draft.signalScore,
             corroborationCount: clusterBatch.messageIds.length,
             status: clusterBatch.messageIds.length > 1 || draft.signalScore >= 70 ? 'reviewed' : 'queued',
+            verificationStatus: verification.status,
+            verificationScore: verification.scoreBoost,
+            verificationSummary: verification.summary,
+            verificationPayload: {
+              provider: verification.provider,
+              verifiedAt: verification.verifiedAt,
+              twitterMatches: verification.twitterMatches,
+              transactionHashes: verification.transactionHashes,
+              notes: verification.notes,
+              rawProviderPayload: verification.rawProviderPayload
+            },
             summary: draft.summary,
             whyItMatters: draft.whyItMatters
           });

@@ -50,12 +50,19 @@ export function buildTelegramClusterDraft(input: {
   normalizedText: string;
   extractedLinks: string[];
   corroborationCount?: number;
+  verificationScoreBoost?: number;
+  verificationSummary?: string | null;
 }) {
+  const baselineScore = scoreTelegramCandidate(input);
+  const verificationScoreBoost = Math.max(0, Math.min(input.verificationScoreBoost ?? 0, 24));
+
   return {
     category: inferTelegramCategory(input.normalizedText),
     bias: inferTelegramBias(input.normalizedText),
-    signalScore: scoreTelegramCandidate(input),
+    signalScore: Math.min(99, baselineScore + verificationScoreBoost),
     summary: input.normalizedText.slice(0, 240),
-    whyItMatters: 'Telegram-first signals often surface before broader crypto media distribution.'
+    whyItMatters: input.verificationSummary
+      ? `Telegram-first signals often surface before broader crypto media distribution. ${input.verificationSummary}`
+      : 'Telegram-first signals often surface before broader crypto media distribution.'
   };
 }

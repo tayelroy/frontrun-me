@@ -181,6 +181,10 @@ create table if not exists telegram_signal_clusters (
   status text not null default 'queued' check (status in ('queued', 'reviewed', 'promoted', 'published', 'discarded')),
   delivery_status text not null default 'new' check (delivery_status in ('new', 'sent', 'ignored')),
   delivered_at timestamptz,
+  verification_status text not null default 'unverified' check (verification_status in ('unverified', 'partial', 'verified')),
+  verification_score integer not null default 0,
+  verification_summary text,
+  verification_payload jsonb not null default '{}'::jsonb,
   summary text,
   why_it_matters text,
   promoted_article_id uuid references news_articles(id) on delete set null,
@@ -193,6 +197,18 @@ alter table if exists telegram_signal_clusters
 
 alter table if exists telegram_signal_clusters
   add column if not exists delivered_at timestamptz;
+
+alter table if exists telegram_signal_clusters
+  add column if not exists verification_status text not null default 'unverified';
+
+alter table if exists telegram_signal_clusters
+  add column if not exists verification_score integer not null default 0;
+
+alter table if exists telegram_signal_clusters
+  add column if not exists verification_summary text;
+
+alter table if exists telegram_signal_clusters
+  add column if not exists verification_payload jsonb not null default '{}'::jsonb;
 
 create index if not exists telegram_signal_clusters_status_idx on telegram_signal_clusters (status, updated_at desc);
 create index if not exists telegram_signal_clusters_delivery_idx on telegram_signal_clusters (delivery_status, updated_at desc);

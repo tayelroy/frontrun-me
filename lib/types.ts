@@ -14,6 +14,7 @@ export type TelegramSourceTier = 'preview' | 'premium' | 'internal';
 export type TelegramRunStatus = 'running' | 'completed' | 'failed';
 export type TelegramClusterStatus = 'queued' | 'reviewed' | 'promoted' | 'published' | 'discarded';
 export type TelegramDeliveryStatus = 'new' | 'sent' | 'ignored';
+export type TelegramVerificationStatus = 'unverified' | 'partial' | 'verified';
 
 export interface PreviewInsight {
   id: string;
@@ -93,6 +94,7 @@ export interface TelegramSourceConfig {
 export interface TelegramClusterPreview {
   id: string;
   sourceName: string;
+  messageText: string | null;
   category: SignalCategory;
   bias: SignalBias;
   signalScore: number;
@@ -102,6 +104,9 @@ export interface TelegramClusterPreview {
   summary: string | null;
   whyItMatters: string | null;
   postedAt: string;
+  verificationStatus: TelegramVerificationStatus;
+  verificationScore: number;
+  verificationSummary: string | null;
 }
 
 export interface TelegramPipelineStep {
