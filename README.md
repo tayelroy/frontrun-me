@@ -53,6 +53,38 @@ This repo now includes a real Telegram worker path using a Telegram user-session
 11. Run `npm run telegram:brief` when you want the full ingest, promote, Picoclaw digest, Telegram send, and terminal output in one command.
 12. (Optional but recommended) configure `ONCHAINOS_VERIFY_API_BASE` and `ONCHAINOS_API_KEY` to verify Telegram signals against Twitter links and onchain transactions via OKX Onchain OS.
 
+## Picoclaw HTTP bridge
+
+If you want the app to call Picoclaw over HTTP instead of SSH, run the bridge on your VM:
+
+```bash
+npm run picoclaw:http
+```
+
+It exposes:
+
+- `GET /health`
+- `GET /v1/models`
+- `POST /v1/chat/completions`
+
+Recommended VM env:
+
+```env
+PICOCLAW_HTTP_HOST=127.0.0.1
+PICOCLAW_HTTP_PORT=8787
+PICOCLAW_GATEWAY_CONTAINER=picoclaw-gateway
+PICOCLAW_API_KEY=your-shared-secret
+```
+
+Then point your local app at it:
+
+```env
+PICOCLAW_API_BASE=http://YOUR_VM_IP:8787/v1
+PICOCLAW_API_KEY=your-shared-secret
+```
+
+When `PICOCLAW_API_BASE` is set, the app now prefers HTTP over SSH automatically.
+
 Notes:
 
 - This path is designed for channels your authenticated Telegram account is allowed to access.
@@ -61,6 +93,7 @@ Notes:
 - The ingest worker only considers the last `TELEGRAM_INGEST_LOOKBACK_DAYS` days of history, defaulting to `7`.
 - The digest AI step only sends the most recent `TELEGRAM_DIGEST_CONTEXT_LIMIT` clusters to Picoclaw for summarization, defaulting to `6`.
 - The digest AI client uses SSH to run `picoclaw agent -m` on your VM. Set `PICOCLAW_SSH_TARGET` and `PICOCLAW_SSH_KEY` in `.env` or `.env.local`.
+- If you run `npm run picoclaw:http` on the VM and set `PICOCLAW_API_BASE`, the app will call Picoclaw over HTTP instead of SSH.
 - Ingestion includes OnchainOS verification. If `ONCHAINOS_VERIFY_API_BASE` is not set, local link/tx heuristics still run and clusters are tagged as `unverified`, `partial`, or `verified`.
 - `npm run picoclaw:check` sends a small probe through that SSH path and is the quickest way to verify the VM side is reachable.
 - `db:seed` will sync `config/telegram-sources.json` automatically if the file exists.

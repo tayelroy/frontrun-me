@@ -1,15 +1,19 @@
+import { access } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { loadEnvFiles } from './load-env';
 
 await loadEnvFiles();
 
 const [
   { env },
+  { readTelegramSourceRegistry, syncTelegramSourceRegistry },
   { connectTelegramWorkerClient },
   { ingestTelegramSources },
   { promoteQueuedTelegramClusters },
   { collectPendingDigestItems, sendDigestWithTracking }
 ] = await Promise.all([
   import('../lib/env'),
+  import('../lib/telegram/source-registry'),
   import('../lib/telegram/client'),
   import('../lib/telegram/ingest'),
   import('../lib/telegram/promote'),
@@ -22,6 +26,22 @@ if (!env.TELEGRAM_BOT_TOKEN) {
 
 if (!env.TELEGRAM_DIGEST_CHAT_ID) {
   throw new Error('TELEGRAM_DIGEST_CHAT_ID is required in .env or .env.local.');
+}
+
+const registryPath = resolve(process.cwd(), 'config/telegram-sources.json');
+
+try {
+  await access(registryPath);
+  console.log('Step 0/4: syncing Telegram source registry...');
+  const sources = await readTelegramSourceRegistry(registryPath);
+  const synced = await syncTelegramSourceRegistry(sources);
+  console.log(`Synced ${synced.length} source(s) from config/telegram-sources.json.`);
+} catch (error) {
+  if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
+    console.log('Step 0/4: no config/telegram-sources.json found, using existing database sources.');
+  } else {
+    throw error;
+  }
 }
 
 const ingestClient = await connectTelegramWorkerClient();
@@ -45,6 +65,21 @@ try {
     if (result.errorMessage) {
       console.error(`  error: ${result.errorMessage}`);
     }
+  }
+
+  const failedResults = ingestResults.filter((result) => result.status === 'failed');
+  if (failedResults.length > 0) {
+    const firstError = failedResults[0]?.errorMessage ?? 'Telegram ingestion failed.';
+
+    if (firstError.includes('column "') && firstError.includes('telegram_signal_clusters')) {
+      throw new Error(
+        `Telegram ingest is using a newer schema than your database. Run "npm run db:init" and retry. First failure: ${firstError}`
+      );
+    }
+
+    throw new Error(
+      `Telegram ingest failed for ${failedResults.length} source(s). First failure: ${firstError}`
+    );
   }
 } finally {
   await ingestClient.destroy().catch(() => null);
@@ -86,7 +121,8 @@ const result = await sendDigestWithTracking({
       },
       body: JSON.stringify({
         chat_id: env.TELEGRAM_DIGEST_CHAT_ID,
-        text: message
+        text: message,
+        disable_web_page_preview: true
       })
     });
 

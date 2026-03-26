@@ -134,9 +134,9 @@ async function callPicoclawViaHttp(input: PicoclawChatCompletionInput) {
 }
 
 export async function callPicoclawChatCompletion(input: PicoclawChatCompletionInput) {
-  if (env.PICOCLAW_SSH_TARGET) {
-    return callPicoclawViaSsh(input);
+  if (env.PICOCLAW_API_BASE) {
+    return callPicoclawViaHttp(input);
   }
 
-  return callPicoclawViaHttp(input);
+  return callPicoclawViaSsh(input);
 }

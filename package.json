@@ -16,7 +16,8 @@
     "telegram:promote": "tsx scripts/telegram-promote-clusters.ts",
     "telegram:brief": "tsx scripts/telegram-brief.ts",
     "picoclaw:tunnel": "tsx scripts/picoclaw-tunnel.ts",
-    "picoclaw:check": "tsx scripts/picoclaw-check.ts"
+    "picoclaw:check": "tsx scripts/picoclaw-check.ts",
+    "picoclaw:http": "tsx scripts/picoclaw-http.ts"
   },
   "dependencies": {
     "@okxconnect/ui": "^1.9.1",

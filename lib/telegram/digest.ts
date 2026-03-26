@@ -5,6 +5,7 @@ import { listPendingDigestClusters } from '../repository';
 import type { TelegramClusterPreview } from '../types';
 import { formatTelegramDigestTimestamp, limitTelegramDigestItems, rankTelegramDigestItems, trimTelegramDigestText } from './ranking';
 import { summarizeTelegramDigestWithPicoclaw, type TelegramDigestAiResult } from './ai';
+import { buildTokenPriceLink, detectFeaturedTokenSymbol } from './token-price';
 
 type Db = Pick<PoolClient, 'query'>;
 
@@ -18,6 +19,44 @@ export async function collectPendingDigestItems(limit = 12) {
   return listPendingDigestClusters(limit);
 }
 
+function buildTokenPriceLine(item: Pick<TelegramClusterPreview, 'messageText' | 'summary' | 'whyItMatters'>) {
+  const tokenSymbol = detectFeaturedTokenSymbol(item.messageText ?? item.summary ?? item.whyItMatters);
+  if (!tokenSymbol) {
+    return null;
+  }
+
+  const tokenPriceLink = buildTokenPriceLink(tokenSymbol);
+  return `${tokenPriceLink.symbol} price: ${tokenPriceLink.url}`;
+}
+
+function buildDigestSectionLines(
+  index: number,
+  input: {
+    sourceName: string;
+    category: string;
+    bias: string;
+    signalScore: number;
+    corroborationCount: number;
+    postedAt: string;
+    takeaway: string;
+    whyItMatters: string;
+    tokenPriceLine?: string | null;
+  }
+) {
+  return [
+    `${index + 1}. ${input.sourceName}`,
+    `• Category: ${input.category.toUpperCase()}`,
+    `• Bias: ${input.bias}`,
+    `• Score: ${Math.round(input.signalScore)}/100`,
+    `• Corroboration: ${input.corroborationCount}`,
+    `• Time: ${formatTelegramDigestTimestamp(input.postedAt)}`,
+    `• Takeaway: ${trimTelegramDigestText(input.takeaway, 220)}`,
+    `• Why it matters: ${trimTelegramDigestText(input.whyItMatters, 220)}`,
+    ...(input.tokenPriceLine ? [`• Market check: ${input.tokenPriceLine}`] : []),
+    ''
+  ];
+}
+
 function buildFallbackTelegramDigestMessage(items: TelegramClusterPreview[]) {
   if (items.length === 0) {
     return 'No new high-signal Telegram clusters are waiting in the queue.';
@@ -25,18 +64,27 @@ function buildFallbackTelegramDigestMessage(items: TelegramClusterPreview[]) {
 
   const ranked = rankTelegramDigestItems(items);
   const lines: string[] = [
-    'FrontRunMe Digest',
+    'FrontRunMe Brief',
     '',
-    `${ranked.length} fresh signal clusters, ranked by recency, urgency, then weightage.`,
+    `${ranked.length} fresh signal clusters ranked by recency, urgency, then weightage.`,
     ''
   ];
 
   for (const [index, item] of ranked.entries()) {
+    const tokenPriceLine = buildTokenPriceLine(item);
+
     lines.push(
-      `${index + 1}. ${item.sourceName} | ${item.category.toUpperCase()} | ${item.bias} | score ${Math.round(item.signalScore)} | ${item.corroborationCount} cites | ${formatTelegramDigestTimestamp(item.postedAt)}`,
-      trimTelegramDigestText(item.summary ?? 'No summary yet.', 220),
-      `Why it matters: ${trimTelegramDigestText(item.whyItMatters ?? 'Awaiting analyst review.', 220)}`,
-      ''
+      ...buildDigestSectionLines(index, {
+        sourceName: item.sourceName,
+        category: item.category,
+        bias: item.bias,
+        signalScore: item.signalScore,
+        corroborationCount: item.corroborationCount,
+        postedAt: item.postedAt,
+        takeaway: item.summary ?? 'No summary yet.',
+        whyItMatters: item.whyItMatters ?? 'Awaiting analyst review.',
+        tokenPriceLine
+      })
     );
   }
 
@@ -49,12 +97,20 @@ function buildAiDigestMessage(summary: TelegramDigestAiResult) {
   const lines: string[] = [summary.title, '', summary.intro, ''];
 
   for (const [index, item] of summary.items.entries()) {
-    const source = item.sourceName;
+    const tokenPriceLine = buildTokenPriceLine(item);
+
     lines.push(
-      `${index + 1}. ${source} | ${item.category.toUpperCase()} | ${item.bias} | score ${Math.round(item.signalScore)} | ${item.corroborationCount} cites | ${formatTelegramDigestTimestamp(item.postedAt)}`,
-      trimTelegramDigestText(item.takeaway, 220),
-      `Why it matters: ${trimTelegramDigestText(item.whyItMatters, 220)}`,
-      ''
+      ...buildDigestSectionLines(index, {
+        sourceName: item.sourceName,
+        category: item.category,
+        bias: item.bias,
+        signalScore: item.signalScore,
+        corroborationCount: item.corroborationCount,
+        postedAt: item.postedAt,
+        takeaway: item.takeaway,
+        whyItMatters: item.whyItMatters,
+        tokenPriceLine
+      })
     );
   }
 
@@ -78,10 +134,14 @@ export async function buildTelegramDigestMessage(items: TelegramClusterPreview[]
   try {
     const aiSummary = await summarizeTelegramDigestWithPicoclaw(selected);
     if (aiSummary) {
+      console.log('Digest mode: AI (Picoclaw summary).');
       return buildAiDigestMessage(aiSummary);
     }
+
+    console.log('Digest mode: deterministic fallback (AI unavailable or not configured).');
   } catch (error) {
     console.warn('Picoclaw digest generation failed, falling back to deterministic digest.', error);
+    console.log('Digest mode: deterministic fallback (AI call failed).');
   }
 
   return buildFallbackTelegramDigestMessage(selected);

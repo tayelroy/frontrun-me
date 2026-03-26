@@ -170,27 +170,7 @@ export default async function TelegramPage() {
             {clusters.length > 0 ? (
               clusters.map((cluster) => (
                 <div className="insight" key={cluster.id}>
-                  {(() => {
-                    const tokenSymbol = detectFeaturedTokenSymbol(cluster.messageText ?? cluster.summary ?? cluster.whyItMatters);
-                    const tokenPriceLink = tokenSymbol ? buildTokenPriceLink(tokenSymbol) : null;
-
-                    return (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-                        <strong>{cluster.sourceName}</strong>
-                        {tokenPriceLink ? (
-                          <a
-                            href={tokenPriceLink.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="badge blue"
-                            aria-label={`View ${tokenPriceLink.symbol} token price`}
-                          >
-                            {tokenPriceLink.symbol} price
-                          </a>
-                        ) : null}
-                      </div>
-                    );
-                  })()}
+                  <strong>{cluster.sourceName}</strong>
                   <div>
                     {cluster.category} • {cluster.bias} • score {cluster.signalScore}/100 • corroboration {cluster.corroborationCount}
                   </div>
@@ -200,7 +180,31 @@ export default async function TelegramPage() {
                   <div style={{ marginTop: 8, color: 'var(--text-soft)' }}>
                     {cluster.verificationSummary ?? 'No external verification signal captured yet.'}
                   </div>
-                  <div style={{ marginTop: 8 }}>{cluster.summary ?? 'No summary yet.'}</div>
+                  {(() => {
+                    const tokenSymbol = detectFeaturedTokenSymbol(cluster.messageText ?? cluster.summary ?? cluster.whyItMatters);
+                    const tokenPriceLink = tokenSymbol ? buildTokenPriceLink(tokenSymbol) : null;
+
+                    return (
+                      <div style={{ marginTop: 8 }}>
+                        {cluster.summary ?? 'No summary yet.'}
+                        {tokenPriceLink ? (
+                          <>
+                            {' '}
+                            <a
+                              href={tokenPriceLink.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="badge blue"
+                              style={{ marginLeft: 8 }}
+                              aria-label={`View ${tokenPriceLink.symbol} token price`}
+                            >
+                              {tokenPriceLink.symbol} price
+                            </a>
+                          </>
+                        ) : null}
+                      </div>
+                    );
+                  })()}
                   <div style={{ marginTop: 8, color: 'var(--text-soft)' }}>{cluster.whyItMatters ?? 'Awaiting analyst review.'}</div>
                   <div style={{ marginTop: 8 }} className={`badge ${cluster.status === 'reviewed' ? 'green' : cluster.status === 'queued' ? 'orange' : 'blue'}`}>
                     {cluster.status}

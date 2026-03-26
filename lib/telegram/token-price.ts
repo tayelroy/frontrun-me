@@ -13,7 +13,9 @@ const COINGECKO_TOKEN_IDS: Record<string, string> = {
   OP: 'optimism',
   SUI: 'sui',
   APT: 'aptos',
-  OKB: 'okb'
+  OKB: 'okb',
+  ONDO: 'ondo-finance',
+  HYPE: 'hyperliquid'
 };
 
 const TOKEN_NAME_ALIASES: Record<string, string> = {
@@ -31,7 +33,9 @@ const TOKEN_NAME_ALIASES: Record<string, string> = {
   optimism: 'OP',
   sui: 'SUI',
   aptos: 'APT',
-  okb: 'OKB'
+  okb: 'OKB',
+  ondo: 'ONDO',
+  hyperliquid: 'HYPE'
 };
 
 const TOKEN_STOP_WORDS = new Set(['ETF', 'SEC', 'FED', 'USD', 'USDT', 'USDC', 'TVL', 'DAO', 'API']);
@@ -77,13 +81,28 @@ function fromTokenName(text: string) {
   return null;
 }
 
+function fromTokenContext(text: string) {
+  const normalized = text.toLowerCase();
+  const match = normalized.match(/\b([a-z0-9]{2,12})\s+(?:token|tokenized|tokens)\b/);
+  if (!match?.[1]) {
+    return null;
+  }
+
+  const candidate = match[1].toUpperCase();
+  if (!COINGECKO_TOKEN_IDS[candidate] || TOKEN_STOP_WORDS.has(candidate)) {
+    return null;
+  }
+
+  return candidate;
+}
+
 export function detectFeaturedTokenSymbol(text: string | null | undefined) {
   const value = text?.trim() ?? '';
   if (!value) {
     return null;
   }
 
-  return fromDollarTicker(value) ?? fromUppercaseTicker(value) ?? fromTokenName(value);
+  return fromDollarTicker(value) ?? fromUppercaseTicker(value) ?? fromTokenName(value) ?? fromTokenContext(value);
 }
 
 export function buildTokenPriceLink(symbol: string): TokenPriceLink {

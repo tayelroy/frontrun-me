@@ -8,7 +8,7 @@ const [{ env }, { callPicoclawChatCompletion, isPicoclawConfigured }] = await Pr
 ]);
 
 if (!isPicoclawConfigured()) {
-  throw new Error('PICOCLAW_API_BASE is not configured in .env or .env.local.');
+  throw new Error('Configure either PICOCLAW_API_BASE or PICOCLAW_SSH_TARGET in .env or .env.local.');
 }
 
 const response = await callPicoclawChatCompletion({
@@ -26,5 +26,5 @@ const response = await callPicoclawChatCompletion({
   ]
 });
 
-console.log(`Picoclaw check succeeded using ${env.PICOCLAW_API_BASE}`);
+console.log(`Picoclaw check succeeded using ${env.PICOCLAW_API_BASE ?? env.PICOCLAW_SSH_TARGET}`);
 console.log(response);

@@ -89,7 +89,7 @@ export async function summarizeTelegramDigestWithPicoclaw(items: TelegramCluster
       {
         role: 'system',
         content:
-          'You are the FrontRunMe digest editor. Summarize Telegram crypto signal clusters into a concise private briefing. Preserve the input order exactly. Keep the context window small. Prioritize recency first, then urgency, then weightage, but do not reorder the items because the input is already ranked. Use only the provided data. Return strict JSON with keys title, intro, bullets, and closing. bullets must contain one object per input item, in the same order, with keys takeaway and whyItMatters.'
+          'You are the FrontRunMe digest editor. Summarize Telegram crypto signal clusters into a concise private briefing. Preserve the input order exactly. Keep the context window small. Prioritize recency first, then urgency, then weightage, but do not reorder the items because the input is already ranked. Use only the provided data. Write for Telegram readability: short sentences, no fluff, no emojis, no markdown tables, and no image references. Return strict JSON with keys title, intro, bullets, and closing. bullets must contain one object per input item, in the same order, with keys takeaway and whyItMatters.'
       },
       {
         role: 'user',
