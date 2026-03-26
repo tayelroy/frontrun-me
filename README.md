@@ -43,13 +43,15 @@ This repo now includes a real Telegram worker path using a Telegram user-session
 1. Set `TELEGRAM_API_ID` and `TELEGRAM_API_HASH` in `.env` or `.env.local`.
 2. Run `npm run telegram:login` once to generate a `TELEGRAM_SESSION`.
 3. Add that session string to `.env` or `.env.local`.
-4. Insert real channel rows into `telegram_sources`.
-5. Run `npm run telegram:ingest` to pull live messages into the database.
+4. Copy `config/telegram-sources.example.json` to `config/telegram-sources.json` and add your real crypto channels.
+5. Run `npm run telegram:sources` to sync all configured channels into `telegram_sources`.
+6. Run `npm run telegram:ingest` to pull live messages into the database.
 
 Notes:
 
 - This path is designed for channels your authenticated Telegram account is allowed to access.
 - If a source has a public username, the worker can resolve it more reliably than a raw channel id alone.
+- If you do not know the numeric channel id yet, you can use `telegramUsername` only. The sync script will create a stable synthetic source id like `telegram:@channelname`.
 - You can target a subset of sources with `npm run telegram:ingest -- <name-or-username>`.
 
 ## Hosted Postgres

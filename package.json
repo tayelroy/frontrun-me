@@ -10,6 +10,7 @@
     "db:seed": "node scripts/run-sql.mjs src/db/seed.sql",
     "telegram:bot": "tsx scripts/telegram-bot.ts",
     "telegram:login": "tsx scripts/telegram-login.ts",
+    "telegram:sources": "tsx scripts/telegram-sync-sources.ts",
     "telegram:ingest": "tsx scripts/telegram-ingest.ts"
   },
   "dependencies": {
